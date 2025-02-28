@@ -66,6 +66,21 @@ class _GoogleSignupPageState extends State<GoogleSignupPage> {
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         children: [
+          // Brand icon
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _amberDark.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.location_on,
+              size: 28,
+              color: Colors.orange.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
           const Text(
             'SpotIT LK',
             style: TextStyle(
