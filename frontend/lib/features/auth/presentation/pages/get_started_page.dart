@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spotit/features/auth/presentation/pages/login_page.dart';
 
 /// Get Started / onboarding page shown when the user first opens the app
 /// (if not already authenticated).
@@ -285,7 +286,12 @@ class GetStartedPage extends StatelessWidget {
             height: 54,
             child: ElevatedButton(
               onPressed: () {
-                // Navigation will be wired in a later commit
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginPage(),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _buttonAmber,
