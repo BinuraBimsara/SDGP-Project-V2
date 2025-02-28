@@ -367,10 +367,10 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E5F5), // Purple 50
+        color: const Color(0xFFFFF8E1), // Amber 50
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: const Color(0xFFCE93D8), width: 1.2), // Purple 200
+        border:
+            Border.all(color: const Color(0xFFFFD54F), width: 1.2), // Amber 300
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
