@@ -217,6 +217,46 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // ─── Login Button (Citizen) ────────────────────────────────
+
+  Widget _buildLoginButton() {
+    return SizedBox(
+      key: const ValueKey('login-button'),
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading
+            ? null
+            : () {
+                // Navigate to Google Sign Up page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const Placeholder(), // Will be replaced with GoogleSignupPage
+                  ),
+                );
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _amber,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: _amber.withValues(alpha: 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Login',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ─── Official Section (email/password) ────────────────────
 
   Widget _buildOfficialSection() {
