@@ -642,7 +642,6 @@ class _GovProfilePageState extends State<GovProfilePage> {
 
   Future<void> _showEditProfileDialog() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const accent = Color(0xFFF9A825);
@@ -651,8 +650,8 @@ class _GovProfilePageState extends State<GovProfilePage> {
     final subtextColor = isDark ? Colors.white60 : Colors.black45;
     final fieldBg = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
 
-    // Pre-fill from current state / Firestore
-    _editNameController.text = user.displayName ?? '';
+    // Pre-fill from current state
+    _editNameController.text = user?.displayName ?? _getUserName();
     _editPhoneController.text = _phone;
     _editPositionController.text = _position;
     _editWorkplaceController.text = _workplace;
@@ -735,7 +734,7 @@ class _GovProfilePageState extends State<GovProfilePage> {
                             // Email (read-only)
                             _buildEditRow(
                               icon: Icons.email_outlined,
-                              label: user.email ?? '',
+                              label: user?.email ?? 'official@spotit.lk',
                               fieldBg: fieldBg,
                               textColor: textColor,
                               isReadOnly: true,
@@ -843,37 +842,64 @@ class _GovProfilePageState extends State<GovProfilePage> {
                                         try {
                                           final name =
                                               _editNameController.text.trim();
-                                          await user.updateDisplayName(name);
-                                          await user.reload();
 
-                                          await FirebaseFirestore.instance
-                                              .collection('users')
-                                              .doc(user.uid)
-                                              .set({
-                                            'displayName': name,
-                                            'phone': _editPhoneController
-                                                .text
-                                                .trim(),
-                                            'position':
-                                                _editPositionController
-                                                    .text
-                                                    .trim(),
-                                            'workplace':
-                                                _editWorkplaceController
-                                                    .text
-                                                    .trim(),
-                                            'branch':
-                                                _editLocationController
-                                                    .text
-                                                    .trim(),
-                                          }, SetOptions(merge: true));
+                                          // Update Firebase Auth if user exists
+                                          if (user != null) {
+                                            await user.updateDisplayName(name);
+                                            await user.reload();
+                                          }
+
+                                          // Save to Firestore if user exists
+                                          if (user != null) {
+                                            await FirebaseFirestore.instance
+                                                .collection('users')
+                                                .doc(user.uid)
+                                                .set({
+                                              'displayName': name,
+                                              'phone': _editPhoneController
+                                                  .text
+                                                  .trim(),
+                                              'position':
+                                                  _editPositionController
+                                                      .text
+                                                      .trim(),
+                                              'workplace':
+                                                  _editWorkplaceController
+                                                      .text
+                                                      .trim(),
+                                              'branch':
+                                                  _editLocationController
+                                                      .text
+                                                      .trim(),
+                                            }, SetOptions(merge: true));
+                                          }
 
                                           if (!context.mounted) return;
                                           Navigator.pop(context);
 
                                           if (mounted) {
-                                            _loadProfileData();
-                                            setState(() {});
+                                            // Update local state immediately
+                                            setState(() {
+                                              _position =
+                                                  _editPositionController
+                                                      .text
+                                                      .trim();
+                                              _workplace =
+                                                  _editWorkplaceController
+                                                      .text
+                                                      .trim();
+                                              _location =
+                                                  _editLocationController
+                                                      .text
+                                                      .trim();
+                                              _phone =
+                                                  _editPhoneController
+                                                      .text
+                                                      .trim();
+                                            });
+                                            if (user != null) {
+                                              _loadProfileData();
+                                            }
                                             ScaffoldMessenger.of(
                                                     this.context)
                                                 .showSnackBar(
