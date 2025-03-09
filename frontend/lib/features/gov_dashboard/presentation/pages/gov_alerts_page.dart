@@ -42,10 +42,7 @@ class _GovAlertsPageState extends State<GovAlertsPage> {
     setState(() => _isLoading = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
+      final uid = user?.uid;
 
       final firestore = FirebaseFirestore.instance;
       final complaintsSnap = await firestore
@@ -66,23 +63,34 @@ class _GovAlertsPageState extends State<GovAlertsPage> {
             .orderBy('timestamp', descending: false)
             .get();
 
-        // Find IDs of comments made by the current official
+        // Find IDs of comments made by an official
+        // Match by authorId if logged in, otherwise match all isOfficial comments
         final officialCommentIds = <String>{};
         for (final commentDoc in commentsSnap.docs) {
           final data = commentDoc.data();
-          if (data['authorId'] == user.uid &&
-              (data['isOfficial'] == true)) {
+          final isOfficialComment = data['isOfficial'] == true;
+          if (!isOfficialComment) continue;
+
+          // If logged in, only match this user's official comments
+          // If dev bypass (no uid), match all official comments
+          if (uid != null && uid.isNotEmpty) {
+            if (data['authorId'] == uid) {
+              officialCommentIds.add(commentDoc.id);
+            }
+          } else {
             officialCommentIds.add(commentDoc.id);
           }
         }
 
-        // Find replies to those comments
+        if (officialCommentIds.isEmpty) continue;
+
+        // Find replies to those official comments
         for (final commentDoc in commentsSnap.docs) {
           final data = commentDoc.data();
           final parentId = data['parentCommentId'] as String?;
           if (parentId != null &&
               officialCommentIds.contains(parentId) &&
-              data['authorId'] != user.uid) {
+              data['isOfficial'] != true) {
             final ts = data['timestamp'];
             final time = ts is Timestamp ? ts.toDate() : DateTime.now();
             alerts.add(_GovAlert(
