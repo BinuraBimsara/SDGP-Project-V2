@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "632998768428",
+    "project_id": "spotit-lk",
+    "storage_bucket": "spotit-lk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:632998768428:android:e9f3e2dadb379be5398689",
+        "android_client_info": {
+          "package_name": "com.example.spotit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAC1tkRlLVOOK_v96YBIXDRogErrB4aYfg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
