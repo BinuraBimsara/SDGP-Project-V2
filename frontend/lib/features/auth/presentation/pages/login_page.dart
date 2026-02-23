@@ -27,7 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   static const Color _green = Color(0xFF2EAA5E);
   static const Color _lightGreen = Color(0xFFE8F5E9);
   static const Color _bgColor = Color(0xFFEEF7EE);
-  static const Color _darkYellow = Color(0xFFF5A800);
+  static const Color _primaryPurple = Color(0xFF9C27B0);
 
   // ─── Lifecycle ───────────────────────────────────────────
   @override
@@ -111,11 +111,11 @@ class _LoginPageState extends State<LoginPage> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: _darkYellow,
+              color: _primaryPurple,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: _darkYellow.withValues(alpha: 0.35),
+                  color: _primaryPurple.withValues(alpha: 0.35),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -321,14 +321,15 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E1),
+        color: const Color(0xFFF3E5F5), // Purple 50
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFFCC02), width: 1.2),
+        border: Border.all(
+            color: const Color(0xFFCE93D8), width: 1.2), // Purple 200
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, size: 18, color: Color(0xFFF5A800)),
+          const Icon(Icons.info_outline, size: 18, color: Color(0xFF9C27B0)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -515,7 +516,7 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.amber[50],
+      color: Colors.purple[50],
       child: Text(
         'Demo Mode: Click any login button to access the app',
         textAlign: TextAlign.center,

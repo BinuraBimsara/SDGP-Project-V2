@@ -43,17 +43,16 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _upvoteBounceAnimation =
-        TweenSequence<double>([
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.1), weight: 40),
-          TweenSequenceItem(tween: Tween(begin: 1.1, end: 0.95), weight: 30),
-          TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 30),
-        ]).animate(
-          CurvedAnimation(
-            parent: _upvoteBounceController,
-            curve: Curves.easeOut,
-          ),
-        );
+    _upvoteBounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.1), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.1, end: 0.95), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 30),
+    ]).animate(
+      CurvedAnimation(
+        parent: _upvoteBounceController,
+        curve: Curves.easeOut,
+      ),
+    );
 
     // Add some dummy comments
     _comments.addAll([
@@ -178,10 +177,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                             ? Icons.radio_button_checked
                             : Icons.radio_button_unchecked,
                         color: isSelected
-                            ? const Color(0xFFFFC107)
+                            ? const Color(0xFF9C27B0)
                             : isDark
-                            ? Colors.white.withValues(alpha: 0.4)
-                            : Colors.black38,
+                                ? Colors.white.withValues(alpha: 0.4)
+                                : Colors.black38,
                         size: 22,
                       ),
                       title: Text(
@@ -221,7 +220,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                               content: const Text(
                                 'Report submitted. Thank you!',
                               ),
-                              backgroundColor: const Color(0xFFFFC107),
+                              backgroundColor: const Color(0xFF9C27B0),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -251,12 +250,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor = isDark
-        ? Colors.white.withValues(alpha: 0.8)
-        : Colors.black54;
-    final metaColor = isDark
-        ? Colors.white.withValues(alpha: 0.5)
-        : Colors.black38;
+    final subtextColor =
+        isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black54;
+    final metaColor =
+        isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black38;
     final cardBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
     final inputBg = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
 
@@ -417,8 +414,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                             0xFFFFC107,
                                           ).withValues(alpha: 0.15)
                                         : isDark
-                                        ? const Color(0xFF1C2733)
-                                        : const Color(0xFFE8EDF2),
+                                            ? const Color(0xFF1C2733)
+                                            : const Color(0xFFE8EDF2),
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
                                       color: _hasUpvoted
@@ -426,10 +423,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                               0xFFFFC107,
                                             ).withValues(alpha: 0.4)
                                           : isDark
-                                          ? Colors.white.withValues(alpha: 0.1)
-                                          : Colors.black.withValues(
-                                              alpha: 0.08,
-                                            ),
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.1)
+                                              : Colors.black.withValues(
+                                                  alpha: 0.08,
+                                                ),
                                     ),
                                   ),
                                   child: Column(
@@ -438,12 +436,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                       Icon(
                                         Icons.arrow_upward_rounded,
                                         color: _hasUpvoted
-                                            ? const Color(0xFFFFC107)
+                                            ? const Color(0xFF9C27B0)
                                             : isDark
-                                            ? Colors.white.withValues(
-                                                alpha: 0.7,
-                                              )
-                                            : Colors.black54,
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.7,
+                                                  )
+                                                : Colors.black54,
                                         size: 26,
                                       ),
                                       const SizedBox(height: 4),
@@ -451,12 +449,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                         '${_complaint.upvoteCount}',
                                         style: TextStyle(
                                           color: _hasUpvoted
-                                              ? const Color(0xFFFFC107)
+                                              ? const Color(0xFF9C27B0)
                                               : isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.8,
-                                                )
-                                              : Colors.black87,
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.8,
+                                                    )
+                                                  : Colors.black87,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
@@ -466,12 +464,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                         _hasUpvoted ? 'Upvoted' : 'Upvote',
                                         style: TextStyle(
                                           color: _hasUpvoted
-                                              ? const Color(0xFFFFC107)
+                                              ? const Color(0xFF9C27B0)
                                               : isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.5,
-                                                )
-                                              : Colors.black45,
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.5,
+                                                    )
+                                                  : Colors.black45,
                                           fontWeight: FontWeight.w500,
                                           fontSize: 11,
                                         ),
@@ -586,7 +584,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFFC107),
+                        color: Color(0xFF9C27B0),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -620,11 +618,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.2),
+                backgroundColor: const Color(0xFF9C27B0).withValues(alpha: 0.2),
                 child: Text(
                   comment.author[0].toUpperCase(),
                   style: const TextStyle(
-                    color: Color(0xFFFFC107),
+                    color: Color(0xFF9C27B0),
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),

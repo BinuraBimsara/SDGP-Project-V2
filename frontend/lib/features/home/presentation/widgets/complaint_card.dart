@@ -33,14 +33,13 @@ class _ComplaintCardState extends State<ComplaintCard>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _bounceAnimation =
-        TweenSequence<double>([
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.15), weight: 40),
-          TweenSequenceItem(tween: Tween(begin: 1.15, end: 0.95), weight: 30),
-          TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 30),
-        ]).animate(
-          CurvedAnimation(parent: _bounceController, curve: Curves.easeOut),
-        );
+    _bounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.15), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.15, end: 0.95), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 30),
+    ]).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.easeOut),
+    );
   }
 
   @override
@@ -75,22 +74,19 @@ class _ComplaintCardState extends State<ComplaintCard>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor = isDark
-        ? Colors.white.withValues(alpha: 0.65)
-        : Colors.black54;
-    final metaColor = isDark
-        ? Colors.white.withValues(alpha: 0.4)
-        : Colors.black38;
+    final subtextColor =
+        isDark ? Colors.white.withValues(alpha: 0.65) : Colors.black54;
+    final metaColor =
+        isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black38;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.06)
         : Colors.black.withValues(alpha: 0.08);
 
     // Upvote pill colors
-    final upvotePillBg = isDark
-        ? const Color(0xFF1C2733)
-        : const Color(0xFFE8EDF2);
+    final upvotePillBg =
+        isDark ? const Color(0xFF1C2733) : const Color(0xFFE8EDF2);
     final upvoteArrowColor = _isUpvoted
-        ? const Color(0xFFFFC107)
+        ? const Color(0xFF9C27B0)
         : (isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black54);
 
     return GestureDetector(
@@ -133,15 +129,15 @@ class _ComplaintCardState extends State<ComplaintCard>
                         ),
                         decoration: BoxDecoration(
                           color: _isUpvoted
-                              ? const Color(0xFFFFC107).withValues(alpha: 0.15)
+                              ? const Color(0xFF9C27B0).withValues(alpha: 0.15)
                               : upvotePillBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _isUpvoted
-                                ? const Color(0xFFFFC107).withValues(alpha: 0.4)
+                                ? const Color(0xFF9C27B0).withValues(alpha: 0.4)
                                 : (isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.black.withValues(alpha: 0.06)),
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06)),
                             width: 1,
                           ),
                         ),
@@ -158,10 +154,10 @@ class _ComplaintCardState extends State<ComplaintCard>
                               '$_upvoteCount',
                               style: TextStyle(
                                 color: _isUpvoted
-                                    ? const Color(0xFFFFC107)
+                                    ? const Color(0xFF9C27B0)
                                     : (isDark
-                                          ? Colors.white.withValues(alpha: 0.8)
-                                          : Colors.black87),
+                                        ? Colors.white.withValues(alpha: 0.8)
+                                        : Colors.black87),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -231,9 +227,9 @@ class _ComplaintCardState extends State<ComplaintCard>
                           child: CircularProgressIndicator(
                             value: loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
+                                    loadingProgress.expectedTotalBytes!
                                 : null,
-                            color: const Color(0xFFFFC107),
+                            color: const Color(0xFF9C27B0),
                             strokeWidth: 2,
                           ),
                         ),
