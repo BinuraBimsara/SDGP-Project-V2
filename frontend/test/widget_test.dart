@@ -4,7 +4,12 @@ import 'package:spotit/main.dart';
 
 void main() {
   testWidgets('App renders without crashing', (WidgetTester tester) async {
-    await tester.pumpWidget(SpotItApp(repository: DummyComplaintRepository()));
+    await tester.pumpWidget(
+      RepositoryProvider(
+        repository: DummyComplaintRepository(),
+        child: const SpotItApp(),
+      ),
+    );
     expect(find.text('SpotIT'), findsOneWidget);
   });
 }
