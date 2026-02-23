@@ -1,2 +1,1 @@
-# SDGP-Project-V2
-2nd Year Software Dev Group Project Version 2
+THis is our file structure to be used as the basic skeleton of our program

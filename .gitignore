@@ -1,0 +1,28 @@
+# Build outputs
+build_android/
+frontend/build/
+frontend/.dart_tool/
+frontend/.packages
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Flutter/Dart
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/ephemeral/
+frontend/macos/Flutter/ephemeral/
+frontend/windows/flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
+
+# Miscellaneous
+*.log
+*.swp
+.DS_Store
+Thumbs.db
