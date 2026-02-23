@@ -60,7 +60,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
         Expanded(
           child: _isLoading
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFFFC107)),
+                  child: CircularProgressIndicator(color: Color(0xFF9C27B0)),
                 )
               : _buildFeed(),
         ),
@@ -91,7 +91,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC107),
+                  color: const Color(0xFF9C27B0),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
@@ -137,23 +137,23 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFFC107).withAlpha(50)
+                          ? const Color(0xFF9C27B0).withAlpha(50)
                           : isDark
-                          ? const Color(0xFF1E1E1E)
-                          : Colors.white,
+                              ? const Color(0xFF1E1E1E)
+                              : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFFFFC107)
+                            ? const Color(0xFF9C27B0)
                             : isDark
-                            ? Colors.white.withAlpha(25)
-                            : Colors.black.withAlpha(25),
+                                ? Colors.white.withAlpha(25)
+                                : Colors.black.withAlpha(25),
                         width: isSelected ? 1.5 : 1.0,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: const Color(0xFFFFC107).withAlpha(80),
+                                color: const Color(0xFF9C27B0).withAlpha(80),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -164,13 +164,12 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                       duration: const Duration(milliseconds: 300),
                       style: TextStyle(
                         color: isSelected
-                            ? const Color(0xFFFFC107)
+                            ? const Color(0xFF9C27B0)
                             : isDark
-                            ? Colors.white.withAlpha(150)
-                            : Colors.black54,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                                ? Colors.white.withAlpha(150)
+                                : Colors.black54,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
                         fontSize: isSelected ? 13.5 : 13,
                       ),
                       child: Text(filter),
