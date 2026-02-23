@@ -86,7 +86,7 @@ class _ComplaintCardState extends State<ComplaintCard>
     final upvotePillBg =
         isDark ? const Color(0xFF1C2733) : const Color(0xFFE8EDF2);
     final upvoteArrowColor = _isUpvoted
-        ? const Color(0xFF9C27B0)
+        ? const Color(0xFFF9A825)
         : (isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black54);
 
     return GestureDetector(
@@ -129,12 +129,12 @@ class _ComplaintCardState extends State<ComplaintCard>
                         ),
                         decoration: BoxDecoration(
                           color: _isUpvoted
-                              ? const Color(0xFF9C27B0).withValues(alpha: 0.15)
+                              ? const Color(0xFFF9A825).withValues(alpha: 0.15)
                               : upvotePillBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _isUpvoted
-                                ? const Color(0xFF9C27B0).withValues(alpha: 0.4)
+                                ? const Color(0xFFF9A825).withValues(alpha: 0.4)
                                 : (isDark
                                     ? Colors.white.withValues(alpha: 0.08)
                                     : Colors.black.withValues(alpha: 0.06)),
@@ -154,7 +154,7 @@ class _ComplaintCardState extends State<ComplaintCard>
                               '$_upvoteCount',
                               style: TextStyle(
                                 color: _isUpvoted
-                                    ? const Color(0xFF9C27B0)
+                                    ? const Color(0xFFF9A825)
                                     : (isDark
                                         ? Colors.white.withValues(alpha: 0.8)
                                         : Colors.black87),
@@ -229,7 +229,7 @@ class _ComplaintCardState extends State<ComplaintCard>
                                 ? loadingProgress.cumulativeBytesLoaded /
                                     loadingProgress.expectedTotalBytes!
                                 : null,
-                            color: const Color(0xFF9C27B0),
+                            color: const Color(0xFFF9A825),
                             strokeWidth: 2,
                           ),
                         ),
@@ -360,7 +360,7 @@ class _ComplaintCardState extends State<ComplaintCard>
       case 'infrastructure':
         return const Color(0xFF2196F3);
       case 'utilities':
-        return const Color(0xFF9C27B0);
+        return const Color(0xFFF9A825);
       default:
         return const Color(0xFF607D8B);
     }

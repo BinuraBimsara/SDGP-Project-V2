@@ -27,7 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   static const Color _green = Color(0xFF2EAA5E);
   static const Color _lightGreen = Color(0xFFE8F5E9);
   static const Color _bgColor = Color(0xFFEEF7EE);
-  static const Color _primaryPurple = Color(0xFF9C27B0);
+  static const Color _primaryColor = Color(0xFFF9A825);
 
   // ─── Lifecycle ───────────────────────────────────────────
   @override
@@ -111,11 +111,11 @@ class _LoginPageState extends State<LoginPage> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: _primaryPurple,
+              color: _primaryColor,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: _primaryPurple.withValues(alpha: 0.35),
+                  color: _primaryColor.withValues(alpha: 0.35),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -329,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, size: 18, color: Color(0xFF9C27B0)),
+          const Icon(Icons.info_outline, size: 18, color: Color(0xFFF9A825)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
