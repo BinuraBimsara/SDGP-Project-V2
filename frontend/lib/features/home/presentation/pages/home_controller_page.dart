@@ -55,7 +55,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.location_on, color: Color(0xFF9C27B0), size: 20),
+          const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
           const SizedBox(width: 6),
           Text(
             'SpotIT',
@@ -113,7 +113,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
               children: [
                 const Icon(
                   Icons.location_on,
-                  color: Color(0xFF9C27B0),
+                  color: Color(0xFFF9A825),
                   size: 32,
                 ),
                 const SizedBox(width: 12),
@@ -203,7 +203,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           color: textColor.withAlpha(13),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: const Color(0xFF9C27B0), size: 20),
+        child: Icon(icon, color: const Color(0xFFF9A825), size: 20),
       ),
       title: Text(
         title,
@@ -257,11 +257,11 @@ class _HomeControllerPageState extends State<HomeControllerPage>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF9C27B0),
+                    color: const Color(0xFFF9A825),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF9C27B0).withAlpha(77),
+                        color: const Color(0xFFF9A825).withAlpha(77),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -318,7 +318,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
               children: [
                 Icon(
                   icon,
-                  color: isActive ? const Color(0xFF9C27B0) : inactiveColor,
+                  color: isActive ? const Color(0xFFF9A825) : inactiveColor,
                   size: 24,
                 ),
                 if (badgeCount > 0)
@@ -352,7 +352,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             Text(
               label,
               style: TextStyle(
-                color: isActive ? const Color(0xFF9C27B0) : inactiveColor,
+                color: isActive ? const Color(0xFFF9A825) : inactiveColor,
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),

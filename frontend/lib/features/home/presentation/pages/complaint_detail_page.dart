@@ -177,7 +177,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                             ? Icons.radio_button_checked
                             : Icons.radio_button_unchecked,
                         color: isSelected
-                            ? const Color(0xFF9C27B0)
+                            ? const Color(0xFFF9A825)
                             : isDark
                                 ? Colors.white.withValues(alpha: 0.4)
                                 : Colors.black38,
@@ -220,7 +220,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                               content: const Text(
                                 'Report submitted. Thank you!',
                               ),
-                              backgroundColor: const Color(0xFF9C27B0),
+                              backgroundColor: const Color(0xFFF9A825),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -436,7 +436,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                       Icon(
                                         Icons.arrow_upward_rounded,
                                         color: _hasUpvoted
-                                            ? const Color(0xFF9C27B0)
+                                            ? const Color(0xFFF9A825)
                                             : isDark
                                                 ? Colors.white.withValues(
                                                     alpha: 0.7,
@@ -449,7 +449,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                         '${_complaint.upvoteCount}',
                                         style: TextStyle(
                                           color: _hasUpvoted
-                                              ? const Color(0xFF9C27B0)
+                                              ? const Color(0xFFF9A825)
                                               : isDark
                                                   ? Colors.white.withValues(
                                                       alpha: 0.8,
@@ -464,7 +464,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                         _hasUpvoted ? 'Upvoted' : 'Upvote',
                                         style: TextStyle(
                                           color: _hasUpvoted
-                                              ? const Color(0xFF9C27B0)
+                                              ? const Color(0xFFF9A825)
                                               : isDark
                                                   ? Colors.white.withValues(
                                                       alpha: 0.5,
@@ -584,7 +584,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF9C27B0),
+                        color: Color(0xFFF9A825),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -618,11 +618,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+                backgroundColor: const Color(0xFFF9A825).withValues(alpha: 0.2),
                 child: Text(
                   comment.author[0].toUpperCase(),
                   style: const TextStyle(
-                    color: Color(0xFF9C27B0),
+                    color: Color(0xFFF9A825),
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -721,7 +721,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       case 'infrastructure':
         return const Color(0xFF2196F3);
       case 'utilities':
-        return const Color(0xFF9C27B0);
+        return const Color(0xFFF9A825);
       default:
         return const Color(0xFF607D8B);
     }
