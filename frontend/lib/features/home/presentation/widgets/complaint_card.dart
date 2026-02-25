@@ -277,7 +277,7 @@ class _ComplaintCardState extends State<ComplaintCard>
                   const SizedBox(width: 3),
                   Flexible(
                     child: Text(
-                      widget.complaint.locationString,
+                      _formatLocationWithDistance(widget.complaint),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: metaColor, fontSize: 11),
@@ -347,6 +347,15 @@ class _ComplaintCardState extends State<ComplaintCard>
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
+  }
+
+  String _formatLocationWithDistance(Complaint complaint) {
+    if (complaint.distanceInMeters != null) {
+      final double km = complaint.distanceInMeters! / 1000;
+      final String distanceStr = km.toStringAsFixed(1);
+      return '${complaint.locationString} • $distanceStr km away';
+    }
+    return complaint.locationString;
   }
 
   Color _getCategoryColor(String category) {

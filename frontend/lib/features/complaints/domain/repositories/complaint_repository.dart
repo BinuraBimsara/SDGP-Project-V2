@@ -7,7 +7,11 @@ import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 /// and swap it in main.dart.
 abstract class ComplaintRepository {
   /// Fetch all complaints, optionally filtered by [category].
-  Future<List<Complaint>> getComplaints({String? category});
+  Future<List<Complaint>> getComplaints({
+    String? category,
+    double? userLat,
+    double? userLng,
+  });
 
   /// Fetch a single complaint by its [id].
   Future<Complaint?> getComplaintById(String id);

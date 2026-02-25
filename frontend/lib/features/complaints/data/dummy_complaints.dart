@@ -14,9 +14,11 @@ class DummyComplaints {
         status: 'Pending',
         upvoteCount: 18,
         commentCount: 0,
-        timestamp: DateTime(2025, 11, 6),
+        timestamp: DateTime.now().subtract(const Duration(days: 2)),
         authorId: 'user_001',
-        locationName: 'Park Avenue, Block 5',
+        locationName: 'Moratuwa',
+        latitude: 6.7731, // Moratuwa
+        longitude: 79.8816,
         isUpvoted: false,
       ),
       Complaint(
@@ -30,25 +32,29 @@ class DummyComplaints {
         status: 'Pending',
         upvoteCount: 31,
         commentCount: 0,
-        timestamp: DateTime(2025, 11, 4),
+        timestamp: DateTime.now().subtract(const Duration(days: 4)),
         authorId: 'user_002',
-        locationName: 'Elm Street near School',
+        locationName: 'Panadura',
+        latitude: 6.7118, // Panadura
+        longitude: 79.9073,
         isUpvoted: false,
       ),
       Complaint(
         id: 'dummy_3',
         title: 'Large pothole on Main Street',
         description:
-            'Deep pothole causing traffic issues and potential damage to vehicles. Located near the intersection with Oak Avenue.',
+            'Deep pothole causing traffic issues and potential damage to vehicles. Located near the intersection.',
         category: 'Pothole',
         imageUrl:
             'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600&h=400&fit=crop',
         status: 'In Progress',
         upvoteCount: 24,
         commentCount: 1,
-        timestamp: DateTime(2025, 11, 1),
+        timestamp: DateTime.now().subtract(const Duration(days: 1)),
         authorId: 'user_003',
-        locationName: 'Main Street & Oak Avenue',
+        locationName: 'Nugegoda',
+        latitude: 6.8649, // Nugegoda
+        longitude: 79.8997,
         isUpvoted: false,
       ),
       Complaint(
@@ -62,9 +68,11 @@ class DummyComplaints {
         status: 'Resolved',
         upvoteCount: 12,
         commentCount: 1,
-        timestamp: DateTime(2025, 10, 28),
+        timestamp: DateTime.now().subtract(const Duration(days: 10)),
         authorId: 'user_004',
-        locationName: 'Cedar Lane',
+        locationName: 'Dehiwala',
+        latitude: 6.8301, // Dehiwala
+        longitude: 79.8681,
         isUpvoted: false,
       ),
       Complaint(
@@ -78,9 +86,11 @@ class DummyComplaints {
         status: 'Pending',
         upvoteCount: 42,
         commentCount: 3,
-        timestamp: DateTime(2025, 11, 5),
+        timestamp: DateTime.now().subtract(const Duration(days: 5)),
         authorId: 'user_005',
-        locationName: 'River Road, Section B',
+        locationName: 'Kandy',
+        latitude: 7.2906, // Kandy
+        longitude: 80.6337,
         isUpvoted: false,
       ),
     ];
