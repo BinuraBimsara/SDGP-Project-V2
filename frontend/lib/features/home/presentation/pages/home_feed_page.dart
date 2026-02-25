@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/core/services/location_service.dart';
 import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
 import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
 import 'package:spotit/main.dart';
@@ -41,7 +42,17 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     setState(() => _isLoading = true);
     try {
       final filter = (_selectedFilter == 'All') ? null : _selectedFilter;
-      final complaints = await _repository.getComplaints(category: filter);
+
+      // Simulate fetching current user location (Colombo fallback if missing)
+      final locationService = LocationService();
+      final position = await locationService.determinePosition();
+
+      final complaints = await _repository.getComplaints(
+        category: filter,
+        userLat: position.latitude,
+        userLng: position.longitude,
+      );
+
       setState(() {
         _complaints = complaints;
         _isLoading = false;

@@ -16,6 +16,9 @@ class Complaint {
   final double? longitude;
   final bool isUpvoted;
 
+  /// Transient property to hold the calculated distance from a specific location
+  final double? distanceInMeters;
+
   Complaint({
     required this.id,
     required this.title,
@@ -31,6 +34,7 @@ class Complaint {
     this.latitude,
     this.longitude,
     this.isUpvoted = false,
+    this.distanceInMeters,
   });
 
   Complaint copyWith({
@@ -48,6 +52,7 @@ class Complaint {
     double? latitude,
     double? longitude,
     bool? isUpvoted,
+    double? distanceInMeters,
   }) {
     return Complaint(
       id: id ?? this.id,
@@ -64,6 +69,7 @@ class Complaint {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isUpvoted: isUpvoted ?? this.isUpvoted,
+      distanceInMeters: distanceInMeters ?? this.distanceInMeters,
     );
   }
 
