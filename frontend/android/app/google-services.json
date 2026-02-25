@@ -1,13 +1,14 @@
 {
   "project_info": {
     "project_number": "632998768428",
+    "firebase_url": "https://spotit-lk-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "spotit-lk",
     "storage_bucket": "spotit-lk.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:632998768428:android:e9f3e2dadb379be5398689",
+        "mobilesdk_app_id": "1:632998768428:android:c6caf76989a18501398689",
         "android_client_info": {
           "package_name": "com.example.spotit"
         }
@@ -20,7 +21,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAC1tkRlLVOOK_v96YBIXDRogErrB4aYfg"
+          "current_key": "AIzaSyAfQLJypsV4YO69W9DSCwpzTVKB6SCaitI"
         }
       ],
       "services": {
@@ -29,6 +30,13 @@
             {
               "client_id": "632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "632998768428-kk213kq0sfp5bli6kr152s4jj710eosd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.spotit"
+              }
             }
           ]
         }
