@@ -1,70 +1,48 @@
-// auth_service.dart
-// ─────────────────────────────────────────────────────────────
-//  STUB implementation – Firebase backend is intentionally
-//  skipped for GUI testing.  Replace with real implementation
-//  later inside the /backend folder.
-// ─────────────────────────────────────────────────────────────
-
-enum UserRole { citizen, official }
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  // ──────────────────── Email / Password ────────────────────
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  Future<void> signInWithEmail({
-    required String email,
-    required String password,
-    required UserRole role,
-  }) async {
-    // Stub: validate official email format only
-    if (role == UserRole.official && !_isGovEmail(email)) {
-      throw Exception('Government officials must use a .gov.lk email address.');
-    }
-    // Simulate a small network delay
-    await Future.delayed(const Duration(milliseconds: 600));
-    // In real implementation, call Firebase Auth here
-  }
-
-  Future<void> signUpWithEmail({
-    required String firstName,
-    required String lastName,
-    required String email,
-    required String password,
-    required String province,
-    required String cityOrTown,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    // In real implementation, call Firebase Auth here
-  }
+  /// The currently signed-in user, or null.
+  User? get currentUser => _auth.currentUser;
 
   // ──────────────────── Google Sign-In ────────────────────
 
-  Future<bool> signInWithGoogle() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    // In real implementation, call Google Sign-In + Firebase Auth here
-    return true;
-  }
+  /// Signs in with Google and returns the [UserCredential].
+  ///
+  /// Returns `null` if the user cancelled the sign-in flow.
+  /// Throws on network or Firebase errors.
+  Future<UserCredential?> signInWithGoogle() async {
+    // Trigger the Google Sign-In flow (account picker).
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-  // ──────────────────── Password Reset ────────────────────
+    // User cancelled the picker.
+    if (googleUser == null) return null;
 
-  Future<void> sendPasswordResetEmail(String email) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    // In real implementation, call Firebase Auth here
+    // Obtain the auth details from the request.
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    // Create a new credential for Firebase.
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Sign in to Firebase with the Google credential.
+    return await _auth.signInWithCredential(credential);
   }
 
   // ──────────────────── Sign Out ────────────────────
 
   Future<void> signOut() async {
-    // In real implementation, call Firebase Auth here
-  }
-
-  // ──────────────────── Helpers ────────────────────
-
-  bool _isGovEmail(String email) {
-    final lower = email.trim().toLowerCase();
-    return lower.endsWith('.gov.lk');
+    await _googleSignIn.signOut();
+    await _auth.signOut();
   }
 }

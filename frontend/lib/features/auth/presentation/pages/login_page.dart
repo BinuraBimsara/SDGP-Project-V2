@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'signup_dialog.dart';
 
@@ -16,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   // ─── State ───────────────────────────────────────────────
   UserRole _selectedRole = UserRole.citizen;
   bool _obscurePassword = true;
-  final bool _isLoading = false;
+  bool _isLoading = false;
 
   // Only used by the Official flow
   final _formKey = GlobalKey<FormState>();
@@ -39,12 +41,26 @@ class _LoginPageState extends State<LoginPage> {
 
   // ─── Actions ─────────────────────────────────────────────
 
-  /// Google Sign-In → navigate straight to home (no backend).
-  void _handleGoogleSignIn() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-    );
+  /// Google Sign-In → authenticate via Firebase, then navigate to home.
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final userCredential = await AuthService().signInWithGoogle();
+      if (userCredential == null) {
+        // User cancelled the sign-in flow.
+        return;
+      }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Sign-in failed: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   /// Official email/password sign-in → navigate to home (no backend).
@@ -57,11 +73,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _openSignUpDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => const SignUpDialog(),
-    );
+    showSignUpDialog(context);
   }
 
   void _showSnack(String msg, {bool isError = true}) {
@@ -150,48 +162,59 @@ class _LoginPageState extends State<LoginPage> {
   // ─── Main Card ───────────────────────────────────────────
 
   Widget _buildCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Sign in to continue',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 30,
+                spreadRadius: 2,
+                offset: const Offset(0, 8),
               ),
-            ),
-            const SizedBox(height: 20),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Sign in to continue',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-            // ── Role Selector ──
-            _buildRoleSelector(),
-            const SizedBox(height: 20),
+                // ── Role Selector ──
+                _buildRoleSelector(),
+                const SizedBox(height: 20),
 
-            // ── Content switches based on role ──
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: _selectedRole == UserRole.citizen
-                  ? _buildCitizenSection()
-                  : _buildOfficialSection(),
+                // ── Content switches based on role ──
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _selectedRole == UserRole.citizen
+                      ? _buildCitizenSection()
+                      : _buildOfficialSection(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -356,21 +379,27 @@ class _LoginPageState extends State<LoginPage> {
         side: BorderSide(color: _green.withValues(alpha: 0.5)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _GoogleLogo(size: 22),
-          SizedBox(width: 10),
-          Text(
-            'Continue with Google',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+      child: _isLoading
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            )
+          : const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _GoogleLogo(size: 22),
+                SizedBox(width: 10),
+                Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -513,16 +542,7 @@ class _LoginPageState extends State<LoginPage> {
   // ─── Demo Note ───────────────────────────────────────────
 
   Widget _buildDemoNote() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.purple[50],
-      child: Text(
-        'Demo Mode: Click any login button to access the app',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.orange[800], fontSize: 11),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
