@@ -7,7 +7,10 @@ class AuthService {
   AuthService._internal();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId:
+        '632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com',
+  );
 
   /// The currently signed-in user, or null.
   User? get currentUser => _auth.currentUser;
