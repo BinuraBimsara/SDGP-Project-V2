@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
+import 'package:spotit/features/home/presentation/widgets/report_issue_modal.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:spotit/features/profile/presentation/pages/profile_page.dart';
 import 'package:spotit/main.dart';
@@ -252,7 +253,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
               ),
               // Center Report button
               GestureDetector(
-                onTap: () {},
+                onTap: () => showReportIssueModal(context),
                 child: Container(
                   width: 48,
                   height: 48,
