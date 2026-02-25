@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/login_page.dart';
 import 'package:spotit/features/complaints/data/repositories/dummy_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -29,7 +31,11 @@ class RepositoryProvider extends InheritedWidget {
 
 // ─── App Entry Point ─────────────────────────────────────────────────────────
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(
     RepositoryProvider(
       repository: DummyComplaintRepository(),
