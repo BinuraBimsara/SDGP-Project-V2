@@ -353,7 +353,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return DropdownButtonFormField<String>(
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       dropdownColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
       icon: Icon(Icons.keyboard_arrow_down_rounded, color: hintColor),
       style: TextStyle(color: textColor, fontSize: 14),

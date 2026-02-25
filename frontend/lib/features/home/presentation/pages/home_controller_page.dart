@@ -59,7 +59,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
           const SizedBox(width: 6),
           Text(
-            'SpotIT',
+            'SpotIT LK',
             style: TextStyle(
               color: isDark ? Colors.white : Colors.black87,
               fontWeight: FontWeight.bold,
