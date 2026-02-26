@@ -61,6 +61,8 @@ class SpotItApp extends StatelessWidget {
           title: 'SpotIT LK',
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 500),
+          themeAnimationCurve: Curves.easeInOut,
 
           // ── Light Theme ──
           theme: ThemeData(
