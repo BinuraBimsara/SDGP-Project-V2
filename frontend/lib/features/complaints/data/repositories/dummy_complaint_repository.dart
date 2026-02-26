@@ -1,7 +1,7 @@
 import 'package:spotit/features/complaints/data/dummy_complaints.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
-import 'package:backend/google_maps_api.dart';
+import 'package:backend/data_architecture/google_maps_api.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math' as math;
 
