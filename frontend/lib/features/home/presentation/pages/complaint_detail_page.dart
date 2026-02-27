@@ -250,8 +250,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor =
-        isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black54;
     final metaColor =
         isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black38;
     final cardBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
@@ -324,163 +322,118 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title
-                          Text(
-                            _complaint.title,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Badges
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              _buildBadge(
-                                _complaint.category,
-                                _getCategoryColor(_complaint.category),
-                              ),
-                              _buildBadge(
-                                _complaint.status,
-                                _getStatusColor(_complaint.status),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Location & Date
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 16,
-                                color: metaColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _complaint.locationString,
-                                style: TextStyle(
-                                  color: metaColor,
-                                  fontSize: 13,
+                              // Title and Badges container
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Title
+                                    Text(
+                                      _complaint.title,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Badges
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: [
+                                        _buildBadge(
+                                          _complaint.category,
+                                          _getCategoryColor(
+                                              _complaint.category),
+                                        ),
+                                        _buildBadge(
+                                          _complaint.status,
+                                          _getStatusColor(_complaint.status),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              Icon(
-                                Icons.access_time_rounded,
-                                size: 16,
-                                color: metaColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDate(_complaint.timestamp),
-                                style: TextStyle(
-                                  color: metaColor,
-                                  fontSize: 13,
-                                ),
+
+                              // Vertical Upvote Pill
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: _toggleUpvote,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: ScaleTransition(
+                                      scale: _upvoteBounceAnimation,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _hasUpvoted
+                                              ? const Color(0xFFF9A825)
+                                                  .withValues(alpha: 0.15)
+                                              : isDark
+                                                  ? const Color(0xFF1C2733)
+                                                  : const Color(0xFFE8EDF2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: _hasUpvoted
+                                                ? const Color(0xFFF9A825)
+                                                    .withValues(alpha: 0.4)
+                                                : isDark
+                                                    ? Colors.white
+                                                        .withValues(alpha: 0.08)
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.08),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.arrow_upward_rounded,
+                                              color: _hasUpvoted
+                                                  ? const Color(0xFFF9A825)
+                                                  : isDark
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.7)
+                                                      : Colors.black54,
+                                              size: 24,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${_complaint.upvoteCount}',
+                                              style: TextStyle(
+                                                color: _hasUpvoted
+                                                    ? const Color(0xFFF9A825)
+                                                    : isDark
+                                                        ? Colors.white
+                                                            .withValues(
+                                                                alpha: 0.8)
+                                                        : Colors.black87,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-
-                          // Description
-                          Text(
-                            _complaint.description,
-                            style: TextStyle(
-                              color: subtextColor,
-                              fontSize: 15,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Upvote button with bounce
-                          Center(
-                            child: GestureDetector(
-                              onTap: _toggleUpvote,
-                              child: ScaleTransition(
-                                scale: _upvoteBounceAnimation,
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _hasUpvoted
-                                        ? const Color(
-                                            0xFFFFC107,
-                                          ).withValues(alpha: 0.15)
-                                        : isDark
-                                            ? const Color(0xFF1C2733)
-                                            : const Color(0xFFE8EDF2),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: _hasUpvoted
-                                          ? const Color(
-                                              0xFFFFC107,
-                                            ).withValues(alpha: 0.4)
-                                          : isDark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.1)
-                                              : Colors.black.withValues(
-                                                  alpha: 0.08,
-                                                ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.arrow_upward_rounded,
-                                        color: _hasUpvoted
-                                            ? const Color(0xFFF9A825)
-                                            : isDark
-                                                ? Colors.white.withValues(
-                                                    alpha: 0.7,
-                                                  )
-                                                : Colors.black54,
-                                        size: 26,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${_complaint.upvoteCount}',
-                                        style: TextStyle(
-                                          color: _hasUpvoted
-                                              ? const Color(0xFFF9A825)
-                                              : isDark
-                                                  ? Colors.white.withValues(
-                                                      alpha: 0.8,
-                                                    )
-                                                  : Colors.black87,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _hasUpvoted ? 'Upvoted' : 'Upvote',
-                                        style: TextStyle(
-                                          color: _hasUpvoted
-                                              ? const Color(0xFFF9A825)
-                                              : isDark
-                                                  ? Colors.white.withValues(
-                                                      alpha: 0.5,
-                                                    )
-                                                  : Colors.black45,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
 
                           // Comments section header
                           Row(
@@ -671,24 +624,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}';
   }
 
   Widget _buildBadge(String label, Color color) {

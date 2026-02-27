@@ -116,7 +116,41 @@ class _ComplaintCardState extends State<ComplaintCard>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Upvote pill on the left
+                  // Title + badges
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.complaint.title,
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Category & Status Badges
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            _buildBadge(
+                              widget.complaint.category,
+                              _getCategoryColor(widget.complaint.category),
+                            ),
+                            _buildBadge(
+                              widget.complaint.status,
+                              _getStatusColor(widget.complaint.status),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Upvote pill on the right
                   GestureDetector(
                     onTap: _handleUpvote,
                     behavior: HitTestBehavior.opaque,
@@ -165,39 +199,6 @@ class _ComplaintCardState extends State<ComplaintCard>
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Title + badges
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.complaint.title,
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Category & Status Badges
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            _buildBadge(
-                              widget.complaint.category,
-                              _getCategoryColor(widget.complaint.category),
-                            ),
-                            _buildBadge(
-                              widget.complaint.status,
-                              _getStatusColor(widget.complaint.status),
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
                   ),
                 ],
