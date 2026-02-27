@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -80,11 +81,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   }
 
   Widget _buildFiltersBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool hasActiveFilter =
+        _selectedFilter != null && _selectedFilter != 'All';
+
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Filter Button
           GestureDetector(
@@ -114,20 +118,82 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
             ),
           ),
 
+          // Selected Category Chip (only when not 'All')
+          if (hasActiveFilter) ...[
+            const SizedBox(width: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(-0.2, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: GestureDetector(
+                key: ValueKey(_selectedFilter),
+                onTap: () {
+                  // Tapping the chip resets to 'All'
+                  setState(() => _selectedFilter = 'All');
+                  _loadComplaints();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF2A2A2A)
+                        : const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFF9A825).withAlpha(120),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _selectedFilter!,
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFFF9A825)
+                              : const Color(0xFFE65100),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.close_rounded,
+                        size: 14,
+                        color: isDark
+                            ? const Color(0xFFF9A825)
+                            : const Color(0xFFE65100),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          const Spacer(),
+
           // Location Button
           GestureDetector(
             onTap: _showLocationMockupDialog,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF1E1E1E)
-                    : Colors.white,
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.black.withValues(alpha: 0.1),
+                  color: isDark
+                      ? Colors.white.withAlpha(26)
+                      : Colors.black.withAlpha(26),
                 ),
               ),
               child: Row(
@@ -135,18 +201,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                 children: [
                   Icon(
                     Icons.location_on,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white70
-                        : Colors.black54,
+                    color: isDark ? Colors.white70 : Colors.black54,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'Colombo',
                     style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black87,
+                      color: isDark ? Colors.white : Colors.black87,
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
@@ -160,188 +222,336 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     );
   }
 
-  void _showFilterDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+  // ── Reusable blurred + animated dialog ──
+  Future<T?> _showBlurredDialog<T>(Widget child) {
+    return showGeneralDialog<T>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: [
-                  const Icon(
-                    Icons.filter_list_rounded,
-                    color: Color(0xFFF9A825),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Select Category',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: _filters.map((category) {
-                  final isSelected = _selectedFilter == category;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      isSelected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: isSelected
-                          ? const Color(0xFFF9A825)
-                          : isDark
-                              ? Colors.white.withValues(alpha: 0.4)
-                              : Colors.black38,
-                      size: 22,
-                    ),
-                    title: Text(
-                      category,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                    onTap: () {
-                      setDialogState(() {
-                        _selectedFilter = category;
-                      });
-                      setState(() {
-                        _selectedFilter = category;
-                      });
-                      // Close dialog and load new filters
-                      Navigator.pop(context);
-                      _loadComplaints();
-                    },
-                  );
-                }).toList(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Close',
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : Colors.black45,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withAlpha(80),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * anim.value,
+            sigmaY: 12 * anim.value,
+          ),
+          child: ScaleTransition(
+            scale: curved,
+            child: FadeTransition(
+              opacity: anim,
+              child: dialogChild,
+            ),
+          ),
         );
       },
+      pageBuilder: (ctx, anim, secondaryAnim) {
+        return Center(child: child);
+      },
+    );
+  }
+
+  void _showFilterDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    _showBlurredDialog(
+      Material(
+        color: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: const BoxConstraints(maxWidth: 380),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(20)
+                  : Colors.black.withAlpha(15),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(80),
+                blurRadius: 30,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Header ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.filter_list_rounded,
+                      color: Color(0xFFF9A825),
+                      size: 28,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Select Category',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Filter complaints by type',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black45,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // ── Category List ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: _filters.map((category) {
+                    final isSelected = _selectedFilter == category;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedFilter = category);
+                          Navigator.pop(context);
+                          _loadComplaints();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFFF9A825)
+                                    .withAlpha(isDark ? 40 : 30)
+                                : isDark
+                                    ? Colors.white.withAlpha(8)
+                                    : Colors.grey.withAlpha(15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFFF9A825).withAlpha(120)
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  category,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFFF9A825)
+                                        : isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                    fontSize: 14,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Color(0xFFF9A825),
+                                  size: 20,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              // ── Close action ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white54 : Colors.black45,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   void _showLocationMockupDialog() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.map_rounded, color: Color(0xFFF9A825), size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Change Location',
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 18,
-                ),
+    _showBlurredDialog(
+      Material(
+        color: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: const BoxConstraints(maxWidth: 380),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(20)
+                  : Colors.black.withAlpha(15),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(80),
+                blurRadius: 30,
+                spreadRadius: 2,
               ),
             ],
           ),
-          content: Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF2A2A2A)
-                      : const Color(0xFFEEEEEE),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.white24 : Colors.black12,
+              // ── Header ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.map_rounded,
+                      color: Color(0xFFF9A825),
+                      size: 28,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Change Location',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // ── Map Mock ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF2A2A2A)
+                        : const Color(0xFFEEEEEE),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.location_on,
+                            color: Color(0xFFEF5350), size: 40),
+                        SizedBox(height: 8),
+                        Text(
+                          'Google Maps Mock UI Component',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.location_on,
-                          color: Color(0xFFEF5350), size: 40),
-                      SizedBox(height: 8),
-                      Text(
-                        'Google Maps Mock UI Component',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ],
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Drag the pin to set your current location for the feed.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? Colors.white54 : Colors.grey,
+                    fontSize: 13,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Drag the pin to set your current location for the feed.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+              // ── Actions ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor:
+                              isDark ? Colors.white54 : Colors.black45,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  const Text('Location updated successfully!'),
+                              backgroundColor: const Color(0xFFF9A825),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF9A825),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: isDark ? Colors.white54 : Colors.black45,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Location updated successfully!'),
-                    backgroundColor: const Color(0xFFF9A825),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF9A825),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Confirm Location'),
-            ),
-          ],
-        );
-      },
+        ),
+      ),
     );
   }
 
