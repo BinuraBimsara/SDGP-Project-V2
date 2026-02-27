@@ -457,7 +457,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         );
 
     return DropdownButtonFormField<String>(
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       dropdownColor: const Color(0xFF2A2A2A),
       icon: Icon(Icons.keyboard_arrow_down_rounded, color: _hintColor),
       style: const TextStyle(color: _textPrimary, fontSize: 14),
