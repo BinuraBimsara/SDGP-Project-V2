@@ -80,118 +80,268 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   }
 
   Widget _buildFiltersBar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            // Main Filters pill
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedFilter = 'All';
-                });
-                _loadComplaints();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9A825),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.filter_list_rounded,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Filter Button
+          GestureDetector(
+            onTap: _showFilterDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9A825),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.filter_list_rounded,
+                      color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Filters',
+                    style: TextStyle(
                       color: Colors.white,
-                      size: 16,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Filters',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            // Category pills with animation
-            ..._filters.where((f) => f != 'All').map((filter) {
-              final isSelected = _selectedFilter == filter;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedFilter = isSelected ? 'All' : filter;
-                    });
-                    _loadComplaints();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
+          ),
+
+          // Location Button
+          GestureDetector(
+            onTap: _showLocationMockupDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : Colors.black54,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Colombo',
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
                     ),
-                    decoration: BoxDecoration(
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.filter_list_rounded,
+                    color: Color(0xFFF9A825),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Select Category',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _filters.map((category) {
+                  final isSelected = _selectedFilter == category;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isSelected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
                       color: isSelected
-                          ? const Color(0xFFF9A825).withAlpha(50)
+                          ? const Color(0xFFF9A825)
                           : isDark
-                              ? const Color(0xFF1E1E1E)
-                              : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFFF9A825)
-                            : isDark
-                                ? Colors.white.withAlpha(25)
-                                : Colors.black.withAlpha(25),
-                        width: isSelected ? 1.5 : 1.0,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFFF9A825).withAlpha(80),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
+                              ? Colors.white.withValues(alpha: 0.4)
+                              : Colors.black38,
+                      size: 22,
                     ),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
+                    title: Text(
+                      category,
                       style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF9A825)
-                            : isDark
-                                ? Colors.white.withAlpha(150)
-                                : Colors.black54,
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 14,
                         fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: isSelected ? 13.5 : 13,
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
-                      child: Text(filter),
+                    ),
+                    onTap: () {
+                      setDialogState(() {
+                        _selectedFilter = category;
+                      });
+                      setState(() {
+                        _selectedFilter = category;
+                      });
+                      // Close dialog and load new filters
+                      Navigator.pop(context);
+                      _loadComplaints();
+                    },
+                  );
+                }).toList(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : Colors.black45,
                     ),
                   ),
                 ),
-              );
-            }),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showLocationMockupDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.map_rounded, color: Color(0xFFF9A825), size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'Change Location',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF2A2A2A)
+                      : const Color(0xFFEEEEEE),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                  ),
+                ),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_on,
+                          color: Color(0xFFEF5350), size: 40),
+                      SizedBox(height: 8),
+                      Text(
+                        'Google Maps Mock UI Component',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Drag the pin to set your current location for the feed.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Location updated successfully!'),
+                    backgroundColor: const Color(0xFFF9A825),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF9A825),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Confirm Location'),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
