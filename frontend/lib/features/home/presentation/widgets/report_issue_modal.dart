@@ -1,18 +1,42 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 // ─── Helper: show the modal ─────────────────────────────────────────────────
 /// Call this from anywhere (e.g. FAB onPressed) to display the Report Issue
-/// modal bottom sheet.
+/// dialog with a blurred background.
 void showReportIssueModal(BuildContext context) {
-  showModalBottomSheet(
+  showDialog(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => const ReportIssueModal(),
+    barrierColor: Colors.black.withAlpha(80),
+    builder: (_) => const _BlurredReportDialog(),
   );
+}
+
+// ─── Blurred backdrop wrapper ────────────────────────────────────────────────
+class _BlurredReportDialog extends StatelessWidget {
+  const _BlurredReportDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 420,
+            maxHeight: MediaQuery.of(context).size.height * 0.90,
+          ),
+          child: const Material(
+            color: Colors.transparent,
+            child: ReportIssueModal(),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Modal Widget ────────────────────────────────────────────────────────────
@@ -29,18 +53,18 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  final _nameController = TextEditingController();
 
   // ── State ──
   String? _selectedCategory;
   final List<XFile> _pickedImages = [];
   final ImagePicker _picker = ImagePicker();
 
-  static const List<String> _categories = [
-    'Road',
-    'Infrastructure',
-    'Waste',
-    'Other',
+  static const List<Map<String, dynamic>> _categories = [
+    {'label': 'Pothole', 'icon': Icons.warning_amber_rounded},
+    {'label': 'Road Damage', 'icon': Icons.remove_road},
+    {'label': 'Infrastructure', 'icon': Icons.construction},
+    {'label': 'Waste', 'icon': Icons.delete_outline},
+    {'label': 'Other', 'icon': Icons.more_horiz},
   ];
 
   @override
@@ -48,12 +72,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
   // ── Image Picker ──
-  Future<void> _pickImages() async {
+  Future<void> _pickFromGallery() async {
     try {
       final images = await _picker.pickMultiImage(
         imageQuality: 80,
@@ -61,7 +84,6 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       );
       if (images.isNotEmpty) {
         setState(() {
-          // Cap at 5 images total
           final remaining = 5 - _pickedImages.length;
           _pickedImages.addAll(images.take(remaining));
         });
@@ -71,181 +93,140 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     }
   }
 
+  Future<void> _pickFromCamera() async {
+    try {
+      final image = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1920,
+      );
+      if (image != null && _pickedImages.length < 5) {
+        setState(() => _pickedImages.add(image));
+      }
+    } catch (e) {
+      debugPrint('Camera error: $e');
+    }
+  }
+
   void _removeImage(int index) {
     setState(() => _pickedImages.removeAt(index));
   }
 
+  // ── Colors ──
+  static const _sheetBg = Color(0xFF141414);
+  static const _fieldFill = Color(0xFF1E1E1E);
+  static const _accentGreen = Color(0xFF4CAF50);
+  static const _borderColor = Color(0xFF2A2A2A);
+  static const _textPrimary = Colors.white;
+  static final _textSecondary = Colors.white.withAlpha(153);
+  static final _hintColor = Colors.white.withAlpha(100);
+
   // ── Build ──
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // ── Theme-aware colors ──
-    final sheetBg = isDark ? const Color(0xFF1A1A1A) : Colors.white;
-    final fieldFill =
-        isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
-    final textPrimary = isDark ? Colors.white : Colors.black87;
-    final textSecondary = isDark ? Colors.white.withAlpha(153) : Colors.black54;
-    final hintColor = isDark ? Colors.white.withAlpha(100) : Colors.black38;
-    final borderColor =
-        isDark ? Colors.white.withAlpha(25) : Colors.black.withAlpha(30);
-    const accentGreen = Color(0xFF4CAF50);
-
     return Container(
-      // Take up to 92% of screen height
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.92,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       decoration: BoxDecoration(
-        color: sheetBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: _sheetBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(120),
+            blurRadius: 30,
+            spreadRadius: 4,
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle ──
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withAlpha(51) : Colors.black26,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+          // ── Header ──
+          _buildHeader(),
 
           // ── Scrollable content ──
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Header ──
-                  _buildHeader(textPrimary, textSecondary),
-                  const SizedBox(height: 20),
+                  // ── Evidence Photos ──
+                  _sectionTitle('📷 Evidence Photos'),
+                  const SizedBox(height: 12),
+                  _buildPhotoButtons(),
+                  if (_pickedImages.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildImagePreviews(),
+                  ],
+                  const SizedBox(height: 24),
 
-                  // ── Issue Title ──
-                  _label('Issue Title', textPrimary),
-                  const SizedBox(height: 8),
-                  _textField(
+                  // ── Report Details ──
+                  _sectionTitle('📋 Report Details'),
+                  const SizedBox(height: 12),
+
+                  // Title
+                  _buildTextField(
                     controller: _titleController,
-                    hint: 'Brief description of the issue',
-                    fieldFill: fieldFill,
-                    hintColor: hintColor,
-                    textColor: textPrimary,
-                    borderColor: borderColor,
+                    hint: 'Title',
+                    prefixIcon: Icons.edit_outlined,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // ── Category ──
-                  _label('Category', textPrimary),
-                  const SizedBox(height: 8),
-                  _buildCategoryDropdown(
-                    fieldFill: fieldFill,
-                    hintColor: hintColor,
-                    textColor: textPrimary,
-                    borderColor: borderColor,
-                  ),
-                  const SizedBox(height: 16),
+                  // Category
+                  _buildCategoryDropdown(),
+                  const SizedBox(height: 12),
 
-                  // ── Description ──
-                  _label('Description', textPrimary),
-                  const SizedBox(height: 8),
-                  _textField(
-                    controller: _descriptionController,
-                    hint: 'Provide detailed information...',
-                    maxLines: 4,
-                    fieldFill: fieldFill,
-                    hintColor: hintColor,
-                    textColor: textPrimary,
-                    borderColor: borderColor,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Be as detailed as possible to help resolve the issue quickly',
-                    style: TextStyle(color: textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ── Location ──
-                  _label('Location', textPrimary),
-                  const SizedBox(height: 8),
-                  _textField(
+                  // Location
+                  _buildTextField(
                     controller: _locationController,
-                    hint: 'Street address or coordinates',
-                    fieldFill: fieldFill,
-                    hintColor: hintColor,
-                    textColor: textPrimary,
-                    borderColor: borderColor,
+                    hint: 'Location',
+                    prefixIcon: Icons.location_on_outlined,
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.location_on, color: accentGreen),
+                      icon: const Icon(Icons.my_location,
+                          color: _accentGreen, size: 20),
                       onPressed: () {
                         // TODO: integrate geolocator to auto‑fill location
                       },
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Click the pin icon to automatically use your current location',
-                    style: TextStyle(color: textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
-                  // ── Photos (Optional) ──
-                  _label('Photos (Optional)', textPrimary),
-                  const SizedBox(height: 10),
-                  _buildUploadButton(accentGreen),
-                  const SizedBox(height: 8),
-                  Text(
-                    'PNG, JPG, GIF up to 10MB (Max 5 images)',
-                    style: TextStyle(color: textSecondary, fontSize: 12),
-                  ),
-                  if (_pickedImages.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _buildImagePreviews(borderColor),
-                  ],
-                  const SizedBox(height: 16),
-
-                  // ── Your Name ──
-                  _label('Your Name', textPrimary),
-                  const SizedBox(height: 8),
-                  _textField(
-                    controller: _nameController,
-                    hint: 'Enter your name',
-                    fieldFill: fieldFill,
-                    hintColor: hintColor,
-                    textColor: textPrimary,
-                    borderColor: borderColor,
+                  // Description
+                  _buildTextField(
+                    controller: _descriptionController,
+                    hint: 'Description',
+                    prefixIcon: Icons.description_outlined,
+                    maxLines: 4,
+                    alignTop: true,
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Submit ──
+                  // ── Submit Button ──
                   SizedBox(
                     width: double.infinity,
                     height: 52,
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: accentGreen,
+                        backgroundColor: _accentGreen,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () {
-                        // TODO: handle submission
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
+                      icon: const Icon(Icons.send_rounded, size: 20),
+                      label: const Text(
                         'Submit Report',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+                      onPressed: () {
+                        // TODO: handle submission
+                        Navigator.pop(context);
+                      },
                     ),
                   ),
                 ],
@@ -257,167 +238,120 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 
-  // ── Header ──
-  Widget _buildHeader(Color textPrimary, Color textSecondary) {
+  // ── Header: [X]  New Report  [Submit] ──
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: _borderColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.close, color: _textPrimary, size: 22),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Expanded(
+            child: Text(
+              'New Report',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              // TODO: handle submission
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Submit',
+              style: TextStyle(
+                color: _accentGreen,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Section title ──
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: _textPrimary,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  // ── Gallery + Camera buttons ──
+  Widget _buildPhotoButtons() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Text(
-                'Report New Issue',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Please provide details about the issue you are reporting.',
-                style: TextStyle(color: textSecondary, fontSize: 14),
-              ),
-            ],
+          child: _photoActionCard(
+            icon: Icons.photo_library_outlined,
+            label: 'Gallery',
+            onTap: _pickedImages.length >= 5 ? null : _pickFromGallery,
           ),
         ),
-        IconButton(
-          icon: Icon(Icons.close, color: textPrimary, size: 22),
-          onPressed: () => Navigator.pop(context),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _photoActionCard(
+            icon: Icons.camera_alt_outlined,
+            label: 'Camera',
+            onTap: _pickedImages.length >= 5 ? null : _pickFromCamera,
+          ),
         ),
       ],
     );
   }
 
-  // ── Section label ──
-  Widget _label(String text, Color color) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: color,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  // ── Reusable text field ──
-  Widget _textField({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    required Color fieldFill,
-    required Color hintColor,
-    required Color textColor,
-    required Color borderColor,
-    Widget? suffixIcon,
+  Widget _photoActionCard({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
   }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: TextStyle(color: textColor, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: hintColor, fontSize: 14),
-        filled: true,
-        fillColor: fieldFill,
-        suffixIcon: suffixIcon,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: _fieldFill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _borderColor),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
-        ),
-      ),
-    );
-  }
-
-  // ── Category dropdown ──
-  Widget _buildCategoryDropdown({
-    required Color fieldFill,
-    required Color hintColor,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DropdownButtonFormField<String>(
-      initialValue: _selectedCategory,
-      dropdownColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: hintColor),
-      style: TextStyle(color: textColor, fontSize: 14),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: fieldFill,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
-        ),
-      ),
-      hint: Text(
-        'Select a category',
-        style: TextStyle(color: hintColor, fontSize: 14),
-      ),
-      items: _categories
-          .map(
-            (c) => DropdownMenuItem(
-              value: c,
-              child: Text(c),
+        child: Column(
+          children: [
+            Icon(icon, color: _accentGreen, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => _selectedCategory = value),
-    );
-  }
-
-  // ── Upload button ──
-  Widget _buildUploadButton(Color accent) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: accent,
-          side: BorderSide(color: accent, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          ],
         ),
-        icon: const Icon(Icons.cloud_upload_outlined, size: 22),
-        label: const Text(
-          'Upload Photos',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        onPressed: _pickedImages.length >= 5 ? null : _pickImages,
       ),
     );
   }
 
   // ── Image preview row ──
-  Widget _buildImagePreviews(Color borderColor) {
+  Widget _buildImagePreviews() {
     return SizedBox(
       height: 72,
       child: ListView.separated(
@@ -435,7 +369,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    border: Border.all(color: borderColor),
+                    border: Border.all(color: _borderColor),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: kIsWeb
@@ -466,6 +400,114 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           );
         },
       ),
+    );
+  }
+
+  // ── Reusable text field ──
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData prefixIcon,
+    int maxLines = 1,
+    Widget? suffixIcon,
+    bool alignTop = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      style: const TextStyle(color: _textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: _hintColor, fontSize: 14),
+        filled: true,
+        fillColor: _fieldFill,
+        prefixIcon: Padding(
+          padding: EdgeInsets.only(
+            top: alignTop ? 14 : 0,
+          ),
+          child: Icon(prefixIcon, color: _accentGreen, size: 20),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 48),
+        suffixIcon: suffixIcon,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _borderColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _accentGreen, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  // ── Category dropdown ──
+  Widget _buildCategoryDropdown() {
+    final selectedCat = _categories.cast<Map<String, dynamic>?>().firstWhere(
+          (c) => c!['label'] == _selectedCategory,
+          orElse: () => null,
+        );
+
+    return DropdownButtonFormField<String>(
+      value: _selectedCategory,
+      dropdownColor: const Color(0xFF2A2A2A),
+      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _hintColor),
+      style: const TextStyle(color: _textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: _fieldFill,
+        prefixIcon: Icon(
+          selectedCat != null
+              ? selectedCat['icon'] as IconData
+              : Icons.category_outlined,
+          color: _accentGreen,
+          size: 20,
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 48),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _borderColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _accentGreen, width: 1.5),
+        ),
+      ),
+      hint: Text(
+        'Category',
+        style: TextStyle(color: _hintColor, fontSize: 14),
+      ),
+      items: _categories
+          .map(
+            (c) => DropdownMenuItem(
+              value: c['label'] as String,
+              child: Row(
+                children: [
+                  Icon(c['icon'] as IconData, color: _accentGreen, size: 18),
+                  const SizedBox(width: 10),
+                  Text(c['label'] as String),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: (value) => setState(() => _selectedCategory = value),
     );
   }
 }
