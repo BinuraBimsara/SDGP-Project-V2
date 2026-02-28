@@ -5,10 +5,10 @@
  * Project: spotit-lk | Region: asia-south1
  */
 
-const { setGlobalOptions } = require("firebase-functions");
-const { onRequest, onCall } = require("firebase-functions/v2/https");
-const { beforeUserCreated } = require("firebase-functions/v2/identity");
-const { onDocumentCreated, onDocumentUpdated } =
+const {setGlobalOptions} = require("firebase-functions");
+const {onRequest, onCall} = require("firebase-functions/v2/https");
+const {beforeUserCreated} = require("firebase-functions/v2/identity");
+const {onDocumentCreated, onDocumentUpdated} =
   require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -18,7 +18,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // -- Global options ----------------------------------------------------------
-setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
+setGlobalOptions({maxInstances: 10, region: "asia-south1"});
 
 // -- Notification helper (internal) ------------------------------------------
 // Sends a push notification via FCM and stores it in Firestore
@@ -30,7 +30,6 @@ setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
  * @param {string} body  - Notification body text
  * @param {object} [extra] - Optional extra data payload
  */
-// eslint-disable-next-line no-unused-vars
 async function sendNotification(uid, title, body, extra = {}) {
   // 1. Store in Firestore for in-app history
   await db.collection("users").doc(uid)
@@ -180,8 +179,24 @@ exports.onComplaintUpdated = onDocumentUpdated(
       );
 
       await event.data.after.ref.update({
-        statusHistory: admin.firestore.FieldValue.arrayUnion(transition),
+        statusHistory:
+        admin.firestore.FieldValue.arrayUnion(
+            transition,
+        ),
       });
+
+      // Notify the complaint author about the change
+      const authorId = after.authorId;
+      if (authorId) {
+        await sendNotification(
+            authorId,
+            "Complaint Status Updated",
+            `Your complaint "${after.title}" ` +
+        `changed from ${before.status} ` +
+        `to ${after.status}.`,
+            {complaintId, newStatus: after.status},
+        );
+      }
     },
 );
 
