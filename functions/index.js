@@ -8,7 +8,7 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {onRequest} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
-const {onDocumentCreated} =
+const {onDocumentCreated, onDocumentUpdated} =
   require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -100,5 +100,35 @@ exports.onComplaintCreated = onDocumentCreated(
       }
 
       logger.info(`Complaint ${complaintId} created successfully`);
+    },
+);
+
+// -- Complaint status update trigger -----------------------------------------
+// Triggered when a complaint document is updated.
+// If the status field changed, logs the transition into a statusHistory array.
+exports.onComplaintUpdated = onDocumentUpdated(
+    "complaints/{complaintId}",
+    async (event) => {
+      const before = event.data.before.data();
+      const after = event.data.after.data();
+      const complaintId = event.params.complaintId;
+
+      // Only act when status actually changed
+      if (before.status === after.status) return;
+
+      const transition = {
+        from: before.status,
+        to: after.status,
+        changedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      logger.info(
+          `Complaint ${complaintId} status: ` +
+      `${before.status} -> ${after.status}`,
+      );
+
+      await event.data.after.ref.update({
+        statusHistory: admin.firestore.FieldValue.arrayUnion(transition),
+      });
     },
 );
