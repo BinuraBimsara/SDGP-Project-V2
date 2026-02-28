@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:spotit/firebase_options.dart';
-import 'package:spotit/features/auth/presentation/pages/login_page.dart';
+import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'package:spotit/features/complaints/data/repositories/dummy_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -132,8 +132,8 @@ class AuthGate extends StatelessWidget {
           return const HomeControllerPage();
         }
 
-        // Not signed in → show the login page.
-        return const LoginPage();
+        // Not signed in → show the get started page.
+        return const GetStartedPage();
       },
     );
   }

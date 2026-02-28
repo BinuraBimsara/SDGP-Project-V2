@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:spotit/features/auth/presentation/pages/google_signup_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
 /// Roles supported by the login page.
@@ -202,8 +203,7 @@ class _LoginPageState extends State<LoginPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        const Placeholder(), // Will be replaced with GoogleSignupPage
+                    builder: (_) => const GoogleSignupPage(),
                   ),
                 );
               },
