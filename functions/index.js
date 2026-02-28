@@ -6,7 +6,7 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/v2/https");
+const {onRequest, onCall} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
 const {onDocumentCreated, onDocumentUpdated} =
   require("firebase-functions/v2/firestore");
@@ -132,3 +132,53 @@ exports.onComplaintUpdated = onDocumentUpdated(
       });
     },
 );
+
+// -- Toggle upvote (callable) ------------------------------------------------
+// Atomically toggles a user's upvote on a complaint.
+// Maintains a subcollection complaints/{id}/upvotes/{uid}.
+exports.toggleUpvote = onCall(async (request) => {
+  // Require authentication
+  if (!request.auth) {
+    throw new Error("You must be signed in to upvote.");
+  }
+
+  const uid = request.auth.uid;
+  const {complaintId} = request.data;
+
+  if (!complaintId) {
+    throw new Error("complaintId is required.");
+  }
+
+  const complaintRef = db.collection("complaints").doc(complaintId);
+  const upvoteRef = complaintRef
+      .collection("upvotes").doc(uid);
+
+  const result = await db.runTransaction(async (tx) => {
+    const upvoteSnap = await tx.get(upvoteRef);
+
+    if (upvoteSnap.exists) {
+      // Remove upvote
+      tx.delete(upvoteRef);
+      tx.update(complaintRef, {
+        upvoteCount: admin.firestore.FieldValue.increment(-1),
+      });
+      return {upvoted: false};
+    } else {
+      // Add upvote
+      tx.set(upvoteRef, {
+        createdAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.update(complaintRef, {
+        upvoteCount: admin.firestore.FieldValue.increment(1),
+      });
+      return {upvoted: true};
+    }
+  });
+
+  logger.info(
+      `User ${uid} ${result.upvoted ? "upvoted" : "removed upvote from"} ` +
+    `complaint ${complaintId}`,
+  );
+  return result;
+});
