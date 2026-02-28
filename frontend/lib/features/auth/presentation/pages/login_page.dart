@@ -126,43 +126,28 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: _primaryColor,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryColor.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.location_on, color: Colors.white, size: 34),
-          ),
-          const SizedBox(height: 10),
           const Text(
             'SpotIT LK',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
               color: Colors.black87,
-              letterSpacing: 0.3,
+              letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 10),
           Text(
-            'Report, Track, Solve',
+            'Login to report, track,\nand solve issues.',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black.withValues(alpha: 0.7),
+              height: 1.35,
             ),
           ),
         ],
