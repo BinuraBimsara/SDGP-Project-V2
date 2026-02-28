@@ -26,9 +26,10 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   // ─── Colors ──────────────────────────────────────────────
-  static const Color _green = Color(0xFF2EAA5E);
-  static const Color _lightGreen = Color(0xFFE8F5E9);
-  static const Color _bgColor = Color(0xFFEEF7EE);
+  static const Color _amber = Color(0xFFF9A825);
+  static const Color _lightAmber = Color(0xFFFFF8E1);
+  static const Color _bgGradientTop = Color(0xFFFCEABB);
+  static const Color _bgGradientBottom = Color(0xFFF8B500);
   static const Color _primaryColor = Color(0xFFF9A825);
 
   // ─── Lifecycle ───────────────────────────────────────────
@@ -80,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : _green,
+        backgroundColor: isError ? Colors.redAccent : _amber,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -91,21 +92,31 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildCard(),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_bgGradientTop, _bgGradientBottom],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildCard(),
+                  ),
                 ),
               ),
-            ),
-            _buildDemoNote(),
-          ],
+              _buildDemoNote(),
+            ],
+          ),
         ),
       ),
     );
@@ -313,22 +324,22 @@ class _LoginPageState extends State<LoginPage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? _lightGreen : Colors.grey[100],
+          color: isSelected ? _lightAmber : Colors.grey[100],
           border: Border.all(
-            color: isSelected ? _green : Colors.grey[300]!,
+            color: isSelected ? _amber : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 28, color: isSelected ? _green : Colors.grey[500]),
+            Icon(icon, size: 28, color: isSelected ? _amber : Colors.grey[500]),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: isSelected ? _green : Colors.grey[600],
+                color: isSelected ? _amber : Colors.grey[600],
                 fontSize: 14,
               ),
             ),
@@ -376,7 +387,7 @@ class _LoginPageState extends State<LoginPage> {
       onPressed: _isLoading ? null : _handleGoogleSignIn,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        side: BorderSide(color: _green.withValues(alpha: 0.5)),
+        side: BorderSide(color: _amber.withValues(alpha: 0.5)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: _isLoading
@@ -465,7 +476,7 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.circular(10),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: _green, width: 1.5),
+        borderSide: const BorderSide(color: _amber, width: 1.5),
         borderRadius: BorderRadius.circular(10),
       ),
       errorBorder: OutlineInputBorder(
@@ -487,7 +498,7 @@ class _LoginPageState extends State<LoginPage> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleOfficialSignIn,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _green,
+          backgroundColor: _amber,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
