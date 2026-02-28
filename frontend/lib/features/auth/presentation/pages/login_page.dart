@@ -49,16 +49,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _showSnack(String msg, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : _amber,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   // ─── Build ───────────────────────────────────────────────
 
   @override
@@ -86,7 +76,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              _buildDemoNote(),
             ],
           ),
         ),
@@ -118,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
               height: 1.35,
             ),
           ),
@@ -136,15 +125,15 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.55),
+            color: Colors.white.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha: 0.4),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 30,
                 spreadRadius: 2,
                 offset: const Offset(0, 8),
@@ -211,7 +200,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: _amber,
           foregroundColor: Colors.white,
           elevation: 2,
-          shadowColor: _amber.withOpacity(0.3),
+          shadowColor: _amber.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -469,11 +458,5 @@ class _LoginPageState extends State<LoginPage> {
               ),
       ),
     );
-  }
-
-  // ─── Demo Note ───────────────────────────────────────────
-
-  Widget _buildDemoNote() {
-    return const SizedBox.shrink();
   }
 }
