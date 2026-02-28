@@ -8,6 +8,8 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {onRequest} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
+const {onDocumentCreated} =
+  require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
@@ -51,6 +53,52 @@ exports.onUserCreated = beforeUserCreated((event) => {
     logger.error(`Failed to create profile for ${uid}`, err);
   });
 
-  // Return empty object — we are not modifying the user record
+  // Return empty object -- we are not modifying the user record
   return {};
 });
+
+// -- Complaint creation validation -------------------------------------------
+// Triggered when a new document is created in the complaints collection.
+// Validates required fields and auto-sets server-side defaults.
+exports.onComplaintCreated = onDocumentCreated(
+    "complaints/{complaintId}",
+    async (event) => {
+      const snap = event.data;
+      if (!snap) return;
+
+      const data = snap.data();
+      const complaintId = event.params.complaintId;
+
+      // Validate required fields
+      const requiredFields = ["title", "description", "category", "authorId"];
+      const missing = requiredFields.filter((f) => !data[f]);
+
+      if (missing.length > 0) {
+        logger.warn(
+            `Complaint ${complaintId} missing fields: ${missing.join(", ")}`,
+        );
+        // Delete the invalid document
+        await snap.ref.delete();
+        return;
+      }
+
+      // Auto-set server-side defaults
+      const defaults = {};
+      if (!data.status) defaults.status = "Pending";
+      if (data.upvoteCount === undefined) defaults.upvoteCount = 0;
+      if (data.commentCount === undefined) defaults.commentCount = 0;
+      if (!data.createdAt) {
+        defaults.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      }
+
+      if (Object.keys(defaults).length > 0) {
+        await snap.ref.update(defaults);
+        logger.info(
+            `Complaint ${complaintId} defaults applied`,
+            {complaintId, defaults},
+        );
+      }
+
+      logger.info(`Complaint ${complaintId} created successfully`);
+    },
+);
