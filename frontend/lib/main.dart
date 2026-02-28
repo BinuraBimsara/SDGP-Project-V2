@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/login_page.dart';
+import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'package:spotit/features/complaints/data/repositories/dummy_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 
@@ -98,8 +100,40 @@ class SpotItApp extends StatelessWidget {
             useMaterial3: true,
           ),
 
-          home: const LoginPage(),
+          home: const AuthGate(),
         );
+      },
+    );
+  }
+}
+
+// ─── Auth Gate ───────────────────────────────────────────────────────────────
+
+/// Listens to Firebase Auth state and routes to [LoginPage] or
+/// [HomeControllerPage] accordingly. This keeps users signed in across
+/// app restarts.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Still waiting for auth state — show a loading indicator.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // User is signed in → go straight to home.
+        if (snapshot.hasData) {
+          return const HomeControllerPage();
+        }
+
+        // Not signed in → show the login page.
+        return const LoginPage();
       },
     );
   }
