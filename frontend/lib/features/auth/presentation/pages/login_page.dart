@@ -186,17 +186,6 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Sign in to continue',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
                 // ── Role Selector ──
                 _buildRoleSelector(),
                 const SizedBox(height: 20),
@@ -223,9 +212,7 @@ class _LoginPageState extends State<LoginPage> {
       key: const ValueKey('citizen-section'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildGoogleButton(),
-        const SizedBox(height: 18),
-        _buildSignUpLink(),
+        _buildLoginButton(),
       ],
     );
   }
