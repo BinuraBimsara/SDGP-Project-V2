@@ -1,8 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
-import 'signup_dialog.dart';
 
 /// Roles supported by the login page.
 enum UserRole { citizen, official }
@@ -30,7 +28,6 @@ class _LoginPageState extends State<LoginPage> {
   static const Color _lightAmber = Color(0xFFFFF8E1);
   static const Color _bgGradientTop = Color(0xFFFCEABB);
   static const Color _bgGradientBottom = Color(0xFFF8B500);
-  static const Color _primaryColor = Color(0xFFF9A825);
 
   // ─── Lifecycle ───────────────────────────────────────────
   @override
@@ -42,28 +39,6 @@ class _LoginPageState extends State<LoginPage> {
 
   // ─── Actions ─────────────────────────────────────────────
 
-  /// Google Sign-In → authenticate via Firebase, then navigate to home.
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      final userCredential = await AuthService().signInWithGoogle();
-      if (userCredential == null) {
-        // User cancelled the sign-in flow.
-        return;
-      }
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      _showSnack('Sign-in failed: ${e.toString()}');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   /// Official email/password sign-in → navigate to home (no backend).
   void _handleOfficialSignIn() {
     if (!_formKey.currentState!.validate()) return;
@@ -71,10 +46,6 @@ class _LoginPageState extends State<LoginPage> {
       context,
       MaterialPageRoute(builder: (_) => const HomeControllerPage()),
     );
-  }
-
-  void _openSignUpDialog() {
-    showSignUpDialog(context);
   }
 
   void _showSnack(String msg, {bool isError = true}) {
@@ -146,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black.withValues(alpha: 0.7),
+              color: Colors.black.withOpacity(0.7),
               height: 1.35,
             ),
           ),
@@ -164,15 +135,15 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.55),
+            color: Colors.white.withOpacity(0.55),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: Colors.white.withOpacity(0.4),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: Colors.black.withOpacity(0.06),
                 blurRadius: 30,
                 spreadRadius: 2,
                 offset: const Offset(0, 8),
@@ -240,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: _amber,
           foregroundColor: Colors.white,
           elevation: 2,
-          shadowColor: _amber.withValues(alpha: 0.3),
+          shadowColor: _amber.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -392,40 +363,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // ─── Google Button ───────────────────────────────────────
-
-  Widget _buildGoogleButton() {
-    return OutlinedButton(
-      onPressed: _isLoading ? null : _handleGoogleSignIn,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        side: BorderSide(color: _amber.withValues(alpha: 0.5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            )
-          : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _GoogleLogo(size: 22),
-                SizedBox(width: 10),
-                Text(
-                  'Continue with Google',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
   // ─── Form Fields (Official only) ─────────────────────────
 
   Widget _buildLabel(String text) {
@@ -534,86 +471,9 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // ─── Sign Up Link ────────────────────────────────────────
-
-  Widget _buildSignUpLink() {
-    if (_selectedRole == UserRole.official) return const SizedBox();
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "Don't have an account? ",
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
-          ),
-          GestureDetector(
-            onTap: _openSignUpDialog,
-            child: const Text(
-              'Sign up',
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── Demo Note ───────────────────────────────────────────
 
   Widget _buildDemoNote() {
     return const SizedBox.shrink();
   }
-}
-
-// ─── Google Logo Widget ──────────────────────────────────────────────────────
-
-class _GoogleLogo extends StatelessWidget {
-  final double size;
-  const _GoogleLogo({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _GoogleLogoPainter()),
-    );
-  }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-    final double r = size.width / 2;
-
-    Paint p(Color color) => Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.18
-      ..strokeCap = StrokeCap.butt;
-
-    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.75);
-
-    canvas.drawArc(rect, -1.1, 2.25, false, p(const Color(0xFF4285F4)));
-    canvas.drawArc(rect, 1.15, 1.65, false, p(const Color(0xFFFBBC05)));
-    canvas.drawArc(rect, 2.8, 1.65, false, p(const Color(0xFF34A853)));
-    canvas.drawArc(rect, -2.75, 1.65, false, p(const Color(0xFFEA4335)));
-
-    canvas.drawLine(
-      Offset(cx, cy),
-      Offset(cx + r * 0.75, cy),
-      Paint()
-        ..color = const Color(0xFF4285F4)
-        ..strokeWidth = size.width * 0.18,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
