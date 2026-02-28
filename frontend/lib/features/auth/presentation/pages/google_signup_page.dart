@@ -312,6 +312,8 @@ class _GoogleSignupPageState extends State<GoogleSignupPage> {
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: Colors.black87,
+              decoration: TextDecoration.underline,
+              decorationThickness: 1.5,
             ),
           ),
         ),
