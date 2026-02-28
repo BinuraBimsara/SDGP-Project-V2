@@ -5,10 +5,10 @@
  * Project: spotit-lk | Region: asia-south1
  */
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest, onCall} = require("firebase-functions/v2/https");
-const {beforeUserCreated} = require("firebase-functions/v2/identity");
-const {onDocumentCreated, onDocumentUpdated} =
+const { setGlobalOptions } = require("firebase-functions");
+const { onRequest, onCall } = require("firebase-functions/v2/https");
+const { beforeUserCreated } = require("firebase-functions/v2/identity");
+const { onDocumentCreated, onDocumentUpdated } =
   require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -18,7 +18,59 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // -- Global options ----------------------------------------------------------
-setGlobalOptions({maxInstances: 10, region: "asia-south1"});
+setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
+
+// -- Notification helper (internal) ------------------------------------------
+// Sends a push notification via FCM and stores it in Firestore
+// for in-app notification history.
+/**
+ * Send a notification to a user via FCM and store in Firestore.
+ * @param {string} uid  - Target user's UID
+ * @param {string} title - Notification title
+ * @param {string} body  - Notification body text
+ * @param {object} [extra] - Optional extra data payload
+ */
+// eslint-disable-next-line no-unused-vars
+async function sendNotification(uid, title, body, extra = {}) {
+  // 1. Store in Firestore for in-app history
+  await db.collection("users").doc(uid)
+      .collection("notifications").add({
+        title,
+        body,
+        read: false,
+        createdAt:
+        admin.firestore.FieldValue.serverTimestamp(),
+        ...extra,
+      });
+
+  // 2. Try sending FCM push (needs fcmToken on user doc)
+  const userSnap = await db
+      .collection("users").doc(uid).get();
+  const fcmToken = userSnap.exists ?
+    userSnap.data().fcmToken : null;
+
+  if (fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {title, body},
+        data: extra,
+      });
+      logger.info(
+          `Push sent to ${uid}: ${title}`,
+      );
+    } catch (err) {
+      logger.warn(
+          `FCM send failed for ${uid}`, err,
+      );
+    }
+  } else {
+    logger.info(
+        `No FCM token for ${uid}, ` +
+      `notification stored in Firestore only`,
+    );
+  }
+}
 
 // -- Health-check endpoint ---------------------------------------------------
 // GET /healthCheck -> verifies the functions runtime is alive
