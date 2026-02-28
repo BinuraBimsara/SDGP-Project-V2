@@ -177,8 +177,62 @@ exports.toggleUpvote = onCall(async (request) => {
   });
 
   logger.info(
-      `User ${uid} ${result.upvoted ? "upvoted" : "removed upvote from"} ` +
+      `User ${uid} ` +
+    `${result.upvoted ? "upvoted" : "removed upvote from"} ` +
     `complaint ${complaintId}`,
   );
   return result;
+});
+
+// -- Add comment (callable) --------------------------------------------------
+// Creates a comment document and increments commentCount atomically.
+exports.addComment = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("You must be signed in to comment.");
+  }
+
+  const uid = request.auth.uid;
+  const {complaintId, text} = request.data;
+
+  if (!complaintId || !text) {
+    throw new Error(
+        "complaintId and text are required.",
+    );
+  }
+
+  const complaintRef = db
+      .collection("complaints").doc(complaintId);
+  const commentsRef = complaintRef.collection("comments");
+
+  // Fetch author display name from user profile
+  const userSnap = await db
+      .collection("users").doc(uid).get();
+  const authorName = userSnap.exists ?
+    userSnap.data().displayName || "Anonymous" :
+    "Anonymous";
+
+  // Create the comment document
+  const commentDoc = await commentsRef.add({
+    authorId: uid,
+    authorName,
+    text,
+    createdAt:
+      admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Increment comment count on the complaint
+  await complaintRef.update({
+    commentCount:
+      admin.firestore.FieldValue.increment(1),
+  });
+
+  logger.info(
+      `Comment ${commentDoc.id} added to ` +
+    `complaint ${complaintId} by ${uid}`,
+  );
+
+  return {
+    commentId: commentDoc.id,
+    authorName,
+  };
 });
