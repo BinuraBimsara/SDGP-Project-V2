@@ -303,3 +303,62 @@ exports.addComment = onCall(async (request) => {
     authorName,
   };
 });
+
+// -- Dashboard stats (callable, gov only) ------------------------------------
+// Returns aggregated complaint statistics for the government dashboard.
+// Restricted to users with role "government" in their profile.
+exports.getDashboardStats = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("Authentication required.");
+  }
+
+  const uid = request.auth.uid;
+
+  // Check user role
+  const userSnap = await db
+      .collection("users").doc(uid).get();
+  if (!userSnap.exists ||
+      userSnap.data().role !== "government") {
+    throw new Error(
+        "Access denied. Government role required.",
+    );
+  }
+
+  // Fetch all complaints
+  const snap = await db
+      .collection("complaints").get();
+
+  const stats = {
+    total: 0,
+    byStatus: {
+      "Pending": 0,
+      "In Progress": 0,
+      "Resolved": 0,
+    },
+    byCategory: {},
+  };
+
+  snap.forEach((doc) => {
+    const data = doc.data();
+    stats.total++;
+
+    // Count by status
+    const status = data.status || "Pending";
+    if (stats.byStatus[status] !== undefined) {
+      stats.byStatus[status]++;
+    } else {
+      stats.byStatus[status] = 1;
+    }
+
+    // Count by category
+    const cat = data.category || "Uncategorized";
+    stats.byCategory[cat] =
+      (stats.byCategory[cat] || 0) + 1;
+  });
+
+  logger.info(
+      `Dashboard stats requested by ${uid}`,
+      {stats},
+  );
+  return stats;
+});
