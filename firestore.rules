@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function getUserRole() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function isGovernment() {
+      return isSignedIn() && getUserRole() == 'government';
+    }
+
+    // ── Users collection ─────────────────────────────────────────────
+    match /users/{userId} {
+      // Users can read their own profile; government can read any
+      allow read: if isOwner(userId) || isGovernment();
+      // Only Cloud Functions (admin SDK) can create/update profiles
+      allow write: if false;
+
+      // Notifications subcollection
+      match /notifications/{notifId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // only Cloud Functions write
+      }
+    }
+
+    // ── Complaints collection ────────────────────────────────────────
+    match /complaints/{complaintId} {
+      // Anyone signed in can read complaints
+      allow read: if isSignedIn();
+      // Citizens can create complaints
+      allow create: if isSignedIn();
+      // Only the author can update their own, or government
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        isGovernment()
+      );
+      // Only government can delete
+      allow delete: if isGovernment();
+
+      // Upvotes subcollection
+      match /upvotes/{upvoteId} {
+        allow read: if isSignedIn();
+        allow write: if false; // managed by Cloud Functions
+      }
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow write: if false; // managed by Cloud Functions
+      }
+    }
+  }
+}

@@ -318,7 +318,7 @@ exports.getDashboardStats = onCall(async (request) => {
   const userSnap = await db
       .collection("users").doc(uid).get();
   if (!userSnap.exists ||
-      userSnap.data().role !== "government") {
+    userSnap.data().role !== "government") {
     throw new Error(
         "Access denied. Government role required.",
     );
@@ -362,3 +362,54 @@ exports.getDashboardStats = onCall(async (request) => {
   );
   return stats;
 });
+
+// -- Set user role (callable, admin-only) ------------------------------------
+// Assigns a role (citizen / government) to a user.
+// Only existing government users can promote others.
+exports.setUserRole = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("Authentication required.");
+  }
+
+  const callerUid = request.auth.uid;
+  const {targetUid, role} = request.data;
+
+  // Validate inputs
+  const validRoles = ["citizen", "government"];
+  if (!targetUid || !role || !validRoles.includes(role)) {
+    throw new Error(
+        "targetUid and role (citizen|government) " +
+      "are required.",
+    );
+  }
+
+  // Only government users can assign roles
+  const callerSnap = await db
+      .collection("users").doc(callerUid).get();
+  if (!callerSnap.exists ||
+    callerSnap.data().role !== "government") {
+    throw new Error(
+        "Access denied. Government role required.",
+    );
+  }
+
+  // Set custom claims on the target user
+  await admin.auth()
+      .setCustomUserClaims(targetUid, {role});
+
+  // Update Firestore profile
+  await db.collection("users").doc(targetUid)
+      .update({role});
+
+  logger.info(
+      `User ${callerUid} set role of ` +
+    `${targetUid} to ${role}`,
+  );
+
+  return {
+    success: true,
+    targetUid,
+    role,
+  };
+});
+
