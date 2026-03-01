@@ -329,13 +329,13 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
                   : Colors.black.withValues(alpha: 0.06),
             ),
 
-            // ── User's comment section (placeholder) ──
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                item.commentText,
-                style: TextStyle(color: textColor, fontSize: 13),
-              ),
+            // ── User's comment section ──
+            _buildCommentSection(
+              item,
+              isDark: isDark,
+              textColor: textColor,
+              subtextColor: subtextColor,
+              accent: accent,
             ),
           ],
         ),
@@ -485,5 +485,99 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         shape: BoxShape.circle,
       ),
     );
+  }
+
+  Widget _buildCommentSection(
+    CommentWithPost item, {
+    required bool isDark,
+    required Color textColor,
+    required Color subtextColor,
+    required Color accent,
+  }) {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+    final displayName = user?.displayName ?? 'You';
+
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // User avatar
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: accent.withValues(alpha: 0.15),
+            backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                ? NetworkImage(photoUrl)
+                : null,
+            child: photoUrl == null || photoUrl.isEmpty
+                ? Text(
+                    displayName[0].toUpperCase(),
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 10),
+
+          // Comment content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      displayName,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatTimeAgo(item.commentTimestamp),
+                      style: TextStyle(color: subtextColor, fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.commentText,
+                  style: TextStyle(
+                    color: textColor.withValues(alpha: 0.85),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    if (diff.inDays > 365) {
+      return '${(diff.inDays / 365).floor()}y ago';
+    } else if (diff.inDays > 30) {
+      return '${(diff.inDays / 30).floor()}mo ago';
+    } else if (diff.inDays > 0) {
+      return '${diff.inDays}d ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 }
