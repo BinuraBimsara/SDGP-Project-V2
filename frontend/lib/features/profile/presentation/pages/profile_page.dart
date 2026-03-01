@@ -3,7 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  /// Callback to switch the bottom navigation tab (used to jump to Reports tab).
+  final void Function(int index)? onSwitchTab;
+
+  const ProfilePage({super.key, this.onSwitchTab});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
