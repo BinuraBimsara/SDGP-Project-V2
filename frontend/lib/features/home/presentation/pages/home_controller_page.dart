@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
-import 'package:spotit/features/admin/presentation/pages/admin_dashboard_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
 import 'package:spotit/features/home/presentation/widgets/report_issue_modal.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
@@ -180,21 +179,6 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             'Get in touch with us',
             textColor,
             onTap: () {},
-          ),
-          _buildDrawerItem(
-            Icons.admin_panel_settings_rounded,
-            'Admin Mode',
-            'Open government dashboard',
-            textColor,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AdminDashboardPage(),
-                ),
-              );
-            },
           ),
           const Spacer(),
           Padding(
