@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
-import 'package:spotit/firebase_options.dart'; // Ensure this exists via flutterfire configure
 
 // Run this using: flutter run -t scripts/seed_data.dart
 // NOTE: This actually needs to run as a Flutter app to access firebase_core plugins properly
@@ -10,7 +9,7 @@ import 'package:spotit/firebase_options.dart'; // Ensure this exists via flutter
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp();
 
   print('Seeding data...');
   await seedComplaints();
