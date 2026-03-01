@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/features/admin/presentation/pages/admin_dashboard_page.dart';
 import 'package:spotit/core/services/location_service.dart';
 import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
 import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
@@ -107,6 +108,42 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                   SizedBox(width: 6),
                   Text(
                     'Filters',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminDashboardPage(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2EAA5E),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.admin_panel_settings_rounded,
+                      color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Admin',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
