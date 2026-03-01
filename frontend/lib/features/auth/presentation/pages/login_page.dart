@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   // ─── State ───────────────────────────────────────────────
   UserRole _selectedRole = UserRole.citizen;
   bool _obscurePassword = true;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   // Only used by the Official flow
   final _formKey = GlobalKey<FormState>();
@@ -251,7 +251,7 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         Text(
-          'I am a',
+          'I am a/an',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
