@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -24,6 +25,36 @@ class AuthService {
   /// Returns `null` if the user cancelled the sign-in flow.
   /// Throws on network or Firebase errors.
   Future<UserCredential?> signInWithGoogle() async {
+    if (kIsWeb) {
+      final provider = GoogleAuthProvider();
+      provider.setCustomParameters({'prompt': 'select_account'});
+      try {
+        return await _auth.signInWithPopup(provider).timeout(
+          const Duration(seconds: 45),
+          onTimeout: () {
+            throw FirebaseAuthException(
+              code: 'popup-timeout',
+              message:
+                  'Google sign-in popup did not complete. Allow popups and try again.',
+            );
+          },
+        );
+      } on FirebaseAuthException catch (e) {
+        const popupRecoverableCodes = {
+          'popup-blocked',
+          'popup-closed-by-user',
+          'cancelled-popup-request',
+          'popup-timeout',
+        };
+
+        if (popupRecoverableCodes.contains(e.code)) {
+          await _auth.signInWithRedirect(provider);
+          return null;
+        }
+        rethrow;
+      }
+    }
+
     // Trigger the Google Sign-In flow (account picker).
     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
