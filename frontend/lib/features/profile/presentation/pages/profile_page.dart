@@ -329,6 +329,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             textColor: textColor,
                             subtextColor: subtextColor,
                             isDark: isDark,
+                            onTap: () {
+                              // Switch to the My Reports tab (index 2)
+                              widget.onSwitchTab?.call(2);
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
