@@ -3,6 +3,7 @@ import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:backend/data_architecture/google_maps_api.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:math' as math;
 
 /// In-memory implementation using dummy data.
@@ -73,7 +74,8 @@ class DummyComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint> createComplaint(Complaint complaint) async {
+  Future<Complaint> createComplaint(Complaint complaint,
+      {List<XFile>? images}) async {
     Complaint complaintWithDistance = complaint;
 
     // Auto-calculate distance for the new complaint as well
@@ -122,5 +124,11 @@ class DummyComplaintRepository implements ComplaintRepository {
     final updated = _complaints[index].copyWith(status: newStatus);
     _complaints[index] = updated;
     return updated;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getComments(String complaintId) async {
+    // Dummy repository returns empty comments
+    return [];
   }
 }

@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 
 /// Abstract repository interface for complaint operations.
@@ -16,8 +17,9 @@ abstract class ComplaintRepository {
   /// Fetch a single complaint by its [id].
   Future<Complaint?> getComplaintById(String id);
 
-  /// Create a new complaint. Returns the created complaint with its ID.
-  Future<Complaint> createComplaint(Complaint complaint);
+  /// Create a new complaint. Optionally attach [images] to upload.
+  /// Returns the created complaint with its ID.
+  Future<Complaint> createComplaint(Complaint complaint, {List<XFile>? images});
 
   /// Toggle the upvote on a complaint for the current user.
   /// Returns the updated complaint.
@@ -25,6 +27,9 @@ abstract class ComplaintRepository {
 
   /// Add a comment to a complaint. Returns the updated comment count.
   Future<int> addComment(String complaintId, String author, String text);
+
+  /// Fetch all comments for a complaint, ordered by timestamp ascending.
+  Future<List<Map<String, dynamic>>> getComments(String complaintId);
 
   /// Update the status of a complaint (e.g., 'Pending' → 'In Progress' → 'Resolved').
   Future<Complaint> updateStatus(String complaintId, String newStatus);
