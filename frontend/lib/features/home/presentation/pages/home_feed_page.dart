@@ -24,9 +24,8 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     'All',
     'Waste',
     'Lighting',
-    'Pothole',
+    'Road Damage',
     'Infrastructure',
-    'Utilities',
   ];
 
   @override
@@ -74,7 +73,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFF9A825)),
                 )
-              : _buildFeed(),
+              : RefreshIndicator(
+                  onRefresh: _loadComplaints,
+                  color: const Color(0xFFF9A825),
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  displacement: 40,
+                  strokeWidth: 2.5,
+                  child: _buildFeed(),
+                ),
         ),
       ],
     );
@@ -559,25 +565,43 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_complaints.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 48,
-              color: isDark ? Colors.white.withAlpha(80) : Colors.black26,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No complaints found',
-              style: TextStyle(
-                color: isDark ? Colors.white.withAlpha(128) : Colors.black45,
-                fontSize: 16,
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off_rounded,
+                    size: 48,
+                    color: isDark ? Colors.white.withAlpha(80) : Colors.black26,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No complaints found',
+                    style: TextStyle(
+                      color:
+                          isDark ? Colors.white.withAlpha(128) : Colors.black45,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pull down to refresh',
+                    style: TextStyle(
+                      color:
+                          isDark ? Colors.white.withAlpha(80) : Colors.black26,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -585,12 +609,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
       duration: const Duration(milliseconds: 300),
       child: ListView.builder(
         key: ValueKey(_selectedFilter),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 8, bottom: 16),
         itemCount: _complaints.length,
         itemBuilder: (context, index) {
           return ComplaintCard(
             complaint: _complaints[index],
             onUpvoteChanged: (isUpvoted) {
+              // Only update locally for immediate UI feedback
               setState(() {
                 final complaintIndex = _complaints.indexWhere(
                   (c) => c.id == _complaints[index].id,
@@ -603,8 +629,10 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                   );
                 }
               });
-              // Persist to database
-              _repository.toggleUpvote(_complaints[index].id);
+              // Persist to database — only increment, not decrement
+              if (isUpvoted) {
+                _repository.toggleUpvote(_complaints[index].id);
+              }
             },
             onTap: () async {
               final result = await Navigator.push<Complaint>(
@@ -615,12 +643,8 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                 ),
               );
               if (result != null) {
-                setState(() {
-                  final i = _complaints.indexWhere((c) => c.id == result.id);
-                  if (i != -1) {
-                    _complaints[i] = result;
-                  }
-                });
+                // Reload complaints to get fresh data from Firebase
+                _loadComplaints();
               }
             },
           );

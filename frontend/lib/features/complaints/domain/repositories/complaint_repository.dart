@@ -28,7 +28,9 @@ abstract class ComplaintRepository {
   /// Add a comment to a complaint. Returns the updated comment count.
   Future<int> addComment(String complaintId, String author, String text);
 
+  /// Fetch all comments for a complaint, ordered by timestamp ascending.
+  Future<List<Map<String, dynamic>>> getComments(String complaintId);
+
   /// Update the status of a complaint (e.g., 'Pending' → 'In Progress' → 'Resolved').
   Future<Complaint> updateStatus(String complaintId, String newStatus);
 }
-
