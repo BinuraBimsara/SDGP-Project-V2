@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:spotit/features/auth/presentation/pages/google_signup_page.dart';
+import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
@@ -18,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   // ─── State ───────────────────────────────────────────────
   UserRole _selectedRole = UserRole.citizen;
   bool _obscurePassword = true;
-  final bool _isLoading = false;
+  bool _isLoading = false;
 
   // Only used by the Official flow
   final _formKey = GlobalKey<FormState>();
@@ -40,6 +40,31 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // ─── Actions ─────────────────────────────────────────────
+
+  /// Citizen Google sign-in → navigate to home.
+  Future<void> _handleCitizenGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final userCredential = await AuthService().signInWithGoogle();
+      if (userCredential == null) return; // cancelled
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-in failed: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   /// Official email/password sign-in → navigate to home (no backend).
   void _handleOfficialSignIn() {
@@ -186,17 +211,7 @@ class _LoginPageState extends State<LoginPage> {
       key: const ValueKey('login-button'),
       height: 50,
       child: ElevatedButton(
-        onPressed: _isLoading
-            ? null
-            : () {
-                // Navigate to Google Sign Up page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const GoogleSignupPage(),
-                  ),
-                );
-              },
+        onPressed: _isLoading ? null : _handleCitizenGoogleSignIn,
         style: ElevatedButton.styleFrom(
           backgroundColor: _amber,
           foregroundColor: Colors.white,
@@ -206,13 +221,22 @@ class _LoginPageState extends State<LoginPage> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: const Text(
-          'Login',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
-          ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
         ),
       ),
     );
