@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/core/services/storage_service.dart';
 
 /// Firestore-backed implementation of [ComplaintRepository].
 ///
@@ -11,6 +13,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseFunctions _functions =
       FirebaseFunctions.instanceFor(region: 'asia-south1');
+  final StorageService _storageService = StorageService();
 
   /// Reference to the top-level complaints collection.
   CollectionReference<Map<String, dynamic>> get _complaintsRef =>
@@ -49,8 +52,27 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   // ── Write operations ─────────────────────────────────────────────────────
 
   @override
-  Future<Complaint> createComplaint(Complaint complaint) async {
+  Future<Complaint> createComplaint(Complaint complaint,
+      {List<XFile>? images}) async {
+    // 1. Create the complaint document first (to get the ID)
     final docRef = await _complaintsRef.add(complaint.toFirestore());
+
+    // 2. Upload images if provided
+    List<String> imageUrls = [];
+    if (images != null && images.isNotEmpty) {
+      imageUrls = await _storageService.uploadMultipleImages(
+        docRef.id,
+        images,
+      );
+
+      // 3. Update the complaint doc with the image URLs
+      await docRef.update({
+        'imageUrl': imageUrls.first,
+        'imageUrls': imageUrls,
+      });
+    }
+
+    // 4. Re-fetch and return the final complaint
     final snap = await docRef.get();
     return Complaint.fromFirestore(snap);
   }
