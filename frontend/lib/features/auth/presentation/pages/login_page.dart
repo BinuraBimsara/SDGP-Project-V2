@@ -256,7 +256,7 @@ class _LoginPageState extends State<LoginPage> {
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
                 ),
-        ),
+              ),
       ),
     );
   }
@@ -503,6 +503,34 @@ class _LoginPageState extends State<LoginPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
       ),
+    );
+  }
+
+  // ─── Sign Up Link (Official only) ────────────────────────
+
+  Widget _buildSignUpLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Don't have an account? ",
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+          ),
+        ),
+        GestureDetector(
+          onTap: () => showSignUpDialog(context),
+          child: const Text(
+            'Sign up',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _amber,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
