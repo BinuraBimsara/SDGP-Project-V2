@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Complaint evidence images ──────────────────────────────────────
+    // Path: complaints/{complaintId}/{fileName}
+    match /complaints/{complaintId}/{fileName} {
+      // Anyone can view complaint images (public read)
+      allow read: if true;
+
+      // Only authenticated users can upload
+      // Max 5 MB, image content types only
+      allow create: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+
+      // No updates or deletes from clients (admin SDK only)
+      allow update, delete: if false;
+    }
+
+    // ── Default: deny everything else ──────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
