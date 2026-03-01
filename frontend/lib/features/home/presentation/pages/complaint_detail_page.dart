@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
+import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/main.dart';
 
 class Comment {
   final String id;
@@ -33,6 +36,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   final ScrollController _scrollController = ScrollController();
   late AnimationController _upvoteBounceController;
   late Animation<double> _upvoteBounceAnimation;
+  int _currentImagePage = 0;
+  bool _isLoadingComments = true;
+  late ComplaintRepository _repository;
 
   @override
   void initState() {
@@ -53,24 +59,35 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         curve: Curves.easeOut,
       ),
     );
+  }
 
-    // Add some dummy comments
-    _comments.addAll([
-      Comment(
-        id: 'c1',
-        author: 'John D.',
-        text:
-            'This has been bothering the whole neighbourhood. Hope it gets fixed soon!',
-        timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      ),
-      Comment(
-        id: 'c2',
-        author: 'Sarah M.',
-        text:
-            'I reported this to the council last week as well. No response yet.',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-    ]);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _repository = RepositoryProvider.of(context);
+    if (_isLoadingComments) {
+      _loadComments();
+    }
+  }
+
+  Future<void> _loadComments() async {
+    try {
+      final commentsData = await _repository.getComments(_complaint.id);
+      if (!mounted) return;
+      setState(() {
+        _comments.clear();
+        _comments.addAll(commentsData.map((data) => Comment(
+              id: data['id'] as String,
+              author: data['author'] as String,
+              text: data['text'] as String,
+              timestamp: data['timestamp'] as DateTime,
+            )));
+        _isLoadingComments = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading comments: $e');
+      if (mounted) setState(() => _isLoadingComments = false);
+    }
   }
 
   @override
@@ -90,16 +107,25 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       );
     });
     _upvoteBounceController.forward(from: 0);
+
+    // Persist upvote toggle to Firebase (handles both add/remove)
+    _repository.toggleUpvote(_complaint.id).then((_) {}).catchError((e) {
+      debugPrint('Error toggling upvote: $e');
+    });
   }
 
   void _addComment() {
     if (_commentController.text.trim().isEmpty) return;
+    final text = _commentController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    final author = user?.displayName ?? user?.email ?? 'You';
+
     setState(() {
       _comments.add(
         Comment(
           id: 'c_${DateTime.now().millisecondsSinceEpoch}',
-          author: 'You',
-          text: _commentController.text.trim(),
+          author: author,
+          text: text,
           timestamp: DateTime.now(),
         ),
       );
@@ -108,6 +134,15 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       );
       _commentController.clear();
     });
+
+    // Persist comment to Firebase (fire-and-forget)
+    _repository
+        .addComment(_complaint.id, author, text)
+        .then((_) {})
+        .catchError((e) {
+      debugPrint('Error adding comment: $e');
+    });
+
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -297,25 +332,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image
-                    if (_complaint.imageUrl.isNotEmpty)
-                      Image.network(
-                        _complaint.imageUrl,
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          height: 250,
-                          color: inputBg,
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: Colors.grey,
-                              size: 50,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // Image(s) — carousel if multiple, single if one
+                    _buildImageSection(inputBg),
 
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -457,7 +475,21 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                           const SizedBox(height: 12),
 
                           // Comments list
-                          if (_comments.isEmpty)
+                          if (_isLoadingComments)
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFFF9A825),
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          else if (_comments.isEmpty)
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
@@ -552,6 +584,85 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Builds the image section: carousel if multiple images, single if one.
+  Widget _buildImageSection(Color inputBg) {
+    // Collect all image URLs, preferring imageUrls list over single imageUrl
+    final List<String> urls = _complaint.imageUrls.isNotEmpty
+        ? _complaint.imageUrls
+        : (_complaint.imageUrl.isNotEmpty ? [_complaint.imageUrl] : []);
+
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    // Single image — no carousel needed
+    if (urls.length == 1) {
+      return Image.network(
+        urls.first,
+        height: 250,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 250,
+          color: inputBg,
+          child: const Center(
+            child:
+                Icon(Icons.broken_image_outlined, color: Colors.grey, size: 50),
+          ),
+        ),
+      );
+    }
+
+    // Multiple images — PageView carousel with indicators
+    return SizedBox(
+      height: 250,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          PageView.builder(
+            itemCount: urls.length,
+            onPageChanged: (i) => setState(() => _currentImagePage = i),
+            itemBuilder: (context, index) {
+              return Image.network(
+                urls[index],
+                height: 250,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 250,
+                  color: inputBg,
+                  child: const Center(
+                    child: Icon(Icons.broken_image_outlined,
+                        color: Colors.grey, size: 50),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Dot indicators
+          Positioned(
+            bottom: 12,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(urls.length, (i) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentImagePage == i ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentImagePage == i
+                        ? const Color(0xFFF9A825)
+                        : Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -651,7 +762,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         return const Color(0xFF4CAF50);
       case 'lighting':
         return const Color(0xFFFF9800);
-      case 'pothole':
+      case 'road damage':
         return const Color(0xFFE91E63);
       case 'infrastructure':
         return const Color(0xFF2196F3);

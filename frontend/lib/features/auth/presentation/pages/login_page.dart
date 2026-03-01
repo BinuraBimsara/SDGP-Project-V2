@@ -142,19 +142,140 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildHeader(),
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildCard(),
+              // ── Background decorative icons ──
+              _buildBackgroundIcons(),
+
+              // ── Main content ──
+              Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildCard(),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Background Decorative Icons ─────────────────────────
+
+  Widget _buildBackgroundIcons() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
+          children: [
+            // Top-left location pin
+            Positioned(
+              top: 80,
+              left: 20,
+              child: Icon(
+                Icons.location_on,
+                size: 38,
+                color: _amber.withValues(alpha: 0.18),
+              ),
+            ),
+            // Top-right gear
+            Positioned(
+              top: 60,
+              right: 25,
+              child: Icon(
+                Icons.settings,
+                size: 32,
+                color: _amber.withValues(alpha: 0.15),
+              ),
+            ),
+            // Mid-left report icon
+            Positioned(
+              top: 220,
+              left: 15,
+              child: Icon(
+                Icons.report_problem_outlined,
+                size: 30,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
+            // Mid-right map icon
+            Positioned(
+              top: 200,
+              right: 18,
+              child: Icon(
+                Icons.map_outlined,
+                size: 34,
+                color: _amber.withValues(alpha: 0.16),
+              ),
+            ),
+            // Bottom-left build/wrench
+            Positioned(
+              bottom: 120,
+              left: 30,
+              child: Icon(
+                Icons.build_outlined,
+                size: 28,
+                color: _amber.withValues(alpha: 0.13),
+              ),
+            ),
+            // Bottom-right people
+            Positioned(
+              bottom: 140,
+              right: 22,
+              child: Icon(
+                Icons.groups_outlined,
+                size: 36,
+                color: _amber.withValues(alpha: 0.15),
+              ),
+            ),
+            // Center-left cloud
+            Positioned(
+              top: 350,
+              left: 10,
+              child: Icon(
+                Icons.cloud_outlined,
+                size: 40,
+                color: _amber.withValues(alpha: 0.12),
+              ),
+            ),
+            // Center-right pin drop
+            Positioned(
+              top: 380,
+              right: 15,
+              child: Icon(
+                Icons.pin_drop_outlined,
+                size: 30,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
+            // Bottom-left shield/verified
+            Positioned(
+              bottom: 60,
+              left: 50,
+              child: Icon(
+                Icons.verified_user_outlined,
+                size: 26,
+                color: _amber.withValues(alpha: 0.13),
+              ),
+            ),
+            // Bottom-right notifications
+            Positioned(
+              bottom: 80,
+              right: 45,
+              child: Icon(
+                Icons.notifications_outlined,
+                size: 28,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -251,6 +372,8 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildLoginButton(),
+        const SizedBox(height: 16),
+        _buildSignUpLink(),
       ],
     );
   }
@@ -531,14 +654,14 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               )
             : const Text(
-                'Sign in',
+                'Login',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
       ),
     );
   }
 
-  // ─── Sign Up Link (Official only) ────────────────────────
+  // ─── Sign Up Link ────────────────────────────────────────
 
   Widget _buildSignUpLink() {
     return Row(

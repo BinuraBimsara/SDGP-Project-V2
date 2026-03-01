@@ -366,6 +366,7 @@ class _ComplaintCardState extends State<ComplaintCard>
       case 'lighting':
         return const Color(0xFFFF9800);
       case 'pothole':
+      case 'road damage':
         return const Color(0xFFE91E63);
       case 'infrastructure':
         return const Color(0xFF2196F3);

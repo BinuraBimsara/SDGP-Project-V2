@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
-import 'package:spotit/features/complaints/data/repositories/dummy_complaint_repository.dart';
+import 'package:spotit/features/complaints/data/repositories/firestore_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 
 // ─── Repository Provider ─────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ Future<void> main() async {
   );
   runApp(
     RepositoryProvider(
-      repository: DummyComplaintRepository(),
+      repository: FirestoreComplaintRepository(),
       child: const SpotItApp(),
     ),
   );
