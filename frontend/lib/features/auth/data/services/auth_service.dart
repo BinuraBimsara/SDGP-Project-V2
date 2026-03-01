@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -7,6 +8,7 @@ class AuthService {
   AuthService._internal();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId:
         '632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com',
@@ -41,7 +43,46 @@ class AuthService {
     // Sign in to Firebase with the Google credential.
     return await _auth.signInWithCredential(credential);
   }
+  // ──────────────────── Official Sign-Up ────────────────
 
+  /// Creates a new official account with email and password.
+  ///
+  /// Stores the user's role as 'official' in the Firestore `users` collection.
+  /// The email must be a valid government email ending in `.gov.lk`.
+  /// Throws on validation, network or Firebase errors.
+  Future<UserCredential> createOfficialAccount({
+    required String email,
+    required String password,
+  }) async {
+    // Create the Firebase Auth account.
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+
+    // Store the role in Firestore.
+    final uid = userCredential.user!.uid;
+    await _firestore.collection('users').doc(uid).set({
+      'email': email.trim(),
+      'role': 'official',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return userCredential;
+  }
+
+  // ──────────────────── Official Sign-In ────────────────
+
+  /// Signs in an official user with email and password.
+  Future<UserCredential> signInOfficial({
+    required String email,
+    required String password,
+  }) async {
+    return await _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
   // ──────────────────── Sign Out ────────────────────
 
   Future<void> signOut() async {
