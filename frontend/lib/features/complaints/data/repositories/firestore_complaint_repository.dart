@@ -1,17 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 
 /// Firestore-backed implementation of [ComplaintRepository].
 ///
-/// Reads complaints from the live `complaints` collection in Firestore.
-/// Write operations will be added in the next commit.
+/// Reads and writes complaints from/to the live Firestore `complaints`
+/// collection. Upvote and comment operations use Cloud Functions callables.
 class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'asia-south1');
 
   /// Reference to the top-level complaints collection.
   CollectionReference<Map<String, dynamic>> get _complaintsRef =>
       _firestore.collection('complaints');
+
+  // ── Read operations ──────────────────────────────────────────────────────
 
   @override
   Future<List<Complaint>> getComplaints({
@@ -19,8 +24,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     double? userLat,
     double? userLng,
   }) async {
-    Query<Map<String, dynamic>> query = _complaintsRef
-        .orderBy('timestamp', descending: true);
+    Query<Map<String, dynamic>> query =
+        _complaintsRef.orderBy('timestamp', descending: true);
 
     // Optional category filter
     if (category != null && category.isNotEmpty) {
@@ -41,25 +46,48 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     return Complaint.fromFirestore(doc);
   }
 
-  // ── Write operations (placeholder — implemented in next commit) ──
+  // ── Write operations ─────────────────────────────────────────────────────
 
   @override
   Future<Complaint> createComplaint(Complaint complaint) async {
-    throw UnimplementedError('createComplaint will be implemented next');
+    final docRef = await _complaintsRef.add(complaint.toFirestore());
+    final snap = await docRef.get();
+    return Complaint.fromFirestore(snap);
   }
 
   @override
   Future<Complaint> toggleUpvote(String complaintId) async {
-    throw UnimplementedError('toggleUpvote will be implemented next');
+    final callable = _functions.httpsCallable('toggleUpvote');
+    await callable.call<dynamic>({'complaintId': complaintId});
+
+    // Re-fetch the complaint to get the updated upvoteCount
+    final doc = await _complaintsRef.doc(complaintId).get();
+    return Complaint.fromFirestore(doc);
   }
 
   @override
-  Future<int> addComment(String complaintId, String author, String text) async {
-    throw UnimplementedError('addComment will be implemented next');
+  Future<int> addComment(
+      String complaintId, String author, String text) async {
+    final callable = _functions.httpsCallable('addComment');
+    await callable.call<dynamic>({
+      'complaintId': complaintId,
+      'text': text,
+    });
+
+    // Re-fetch the complaint to get the updated commentCount
+    final doc = await _complaintsRef.doc(complaintId).get();
+    final data = doc.data();
+    return (data?['commentCount'] as num?)?.toInt() ?? 0;
   }
 
   @override
-  Future<Complaint> updateStatus(String complaintId, String newStatus) async {
-    throw UnimplementedError('updateStatus will be implemented next');
+  Future<Complaint> updateStatus(
+      String complaintId, String newStatus) async {
+    await _complaintsRef.doc(complaintId).update({
+      'status': newStatus,
+    });
+
+    final doc = await _complaintsRef.doc(complaintId).get();
+    return Complaint.fromFirestore(doc);
   }
 }
