@@ -125,4 +125,10 @@ class DummyComplaintRepository implements ComplaintRepository {
     _complaints[index] = updated;
     return updated;
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> getComments(String complaintId) async {
+    // Dummy repository returns empty comments
+    return [];
+  }
 }

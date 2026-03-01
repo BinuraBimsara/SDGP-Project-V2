@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -8,11 +7,9 @@ import 'package:spotit/core/services/storage_service.dart';
 /// Firestore-backed implementation of [ComplaintRepository].
 ///
 /// Reads and writes complaints from/to the live Firestore `complaints`
-/// collection. Upvote and comment operations use Cloud Functions callables.
+/// collection. Upvote and comment operations write directly to Firestore.
 class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
   final StorageService _storageService = StorageService();
 
   /// Reference to the top-level complaints collection.
@@ -27,19 +24,21 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     double? userLat,
     double? userLng,
   }) async {
-    Query<Map<String, dynamic>> query =
-        _complaintsRef.orderBy('timestamp', descending: true);
+    // Always fetch all complaints ordered by timestamp
+    final snapshot =
+        await _complaintsRef.orderBy('timestamp', descending: true).get();
 
-    // Optional category filter
+    List<Complaint> complaints =
+        snapshot.docs.map((doc) => Complaint.fromFirestore(doc)).toList();
+
+    // Apply category filter client-side to avoid needing a composite index
     if (category != null && category.isNotEmpty) {
-      query = query.where('category', isEqualTo: category);
+      complaints = complaints
+          .where((c) => c.category.toLowerCase() == category.toLowerCase())
+          .toList();
     }
 
-    final snapshot = await query.get();
-
-    return snapshot.docs
-        .map((doc) => Complaint.fromFirestore(doc))
-        .toList();
+    return complaints;
   }
 
   @override
@@ -79,32 +78,69 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
   @override
   Future<Complaint> toggleUpvote(String complaintId) async {
-    final callable = _functions.httpsCallable('toggleUpvote');
-    await callable.call<dynamic>({'complaintId': complaintId});
+    final docRef = _complaintsRef.doc(complaintId);
+    final doc = await docRef.get();
+    if (!doc.exists) throw Exception('Complaint not found');
 
-    // Re-fetch the complaint to get the updated upvoteCount
-    final doc = await _complaintsRef.doc(complaintId).get();
-    return Complaint.fromFirestore(doc);
+    final data = doc.data()!;
+    final currentCount = (data['upvoteCount'] as num?)?.toInt() ?? 0;
+
+    // Increment (toggle up). For a full per-user toggle you'd track
+    // user IDs in an array, but for now we just increment by 1.
+    final newCount = currentCount + 1;
+
+    await docRef.update({
+      'upvoteCount': newCount,
+    });
+
+    return Complaint.fromFirestore(await docRef.get());
   }
 
   @override
-  Future<int> addComment(
-      String complaintId, String author, String text) async {
-    final callable = _functions.httpsCallable('addComment');
-    await callable.call<dynamic>({
-      'complaintId': complaintId,
+  Future<int> addComment(String complaintId, String author, String text) async {
+    final docRef = _complaintsRef.doc(complaintId);
+
+    // 1. Add comment to the comments subcollection
+    await docRef.collection('comments').add({
+      'author': author,
       'text': text,
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // Re-fetch the complaint to get the updated commentCount
-    final doc = await _complaintsRef.doc(complaintId).get();
-    final data = doc.data();
+    // 2. Increment the commentCount on the parent document
+    await docRef.update({
+      'commentCount': FieldValue.increment(1),
+    });
+
+    // 3. Return the updated comment count
+    final updatedDoc = await docRef.get();
+    final data = updatedDoc.data();
     return (data?['commentCount'] as num?)?.toInt() ?? 0;
   }
 
   @override
-  Future<Complaint> updateStatus(
-      String complaintId, String newStatus) async {
+  Future<List<Map<String, dynamic>>> getComments(String complaintId) async {
+    final snapshot = await _complaintsRef
+        .doc(complaintId)
+        .collection('comments')
+        .orderBy('timestamp', descending: false)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id,
+        'author': data['author'] as String? ?? 'Anonymous',
+        'text': data['text'] as String? ?? '',
+        'timestamp': data['timestamp'] is Timestamp
+            ? (data['timestamp'] as Timestamp).toDate()
+            : DateTime.now(),
+      };
+    }).toList();
+  }
+
+  @override
+  Future<Complaint> updateStatus(String complaintId, String newStatus) async {
     await _complaintsRef.doc(complaintId).update({
       'status': newStatus,
     });

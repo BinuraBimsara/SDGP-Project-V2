@@ -68,6 +68,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     {'label': 'Road Damage', 'icon': Icons.remove_road},
     {'label': 'Infrastructure', 'icon': Icons.construction},
     {'label': 'Waste', 'icon': Icons.delete_outline},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline},
     {'label': 'Other', 'icon': Icons.more_horiz},
   ];
 
@@ -303,8 +304,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      onPressed:
-                          _isSubmitting ? null : _handleSubmit,
+                      onPressed: _isSubmitting ? null : _handleSubmit,
                     ),
                   ),
                 ],
