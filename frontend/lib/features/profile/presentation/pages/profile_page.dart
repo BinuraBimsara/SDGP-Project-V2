@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:spotit/features/profile/presentation/pages/comments_given_page.dart';
 
 class ProfilePage extends StatefulWidget {
   /// Callback to switch the bottom navigation tab (used to jump to Reports tab).
@@ -359,6 +360,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       subtextColor: subtextColor,
                       isDark: isDark,
                       fullWidth: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CommentsGivenPage(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
