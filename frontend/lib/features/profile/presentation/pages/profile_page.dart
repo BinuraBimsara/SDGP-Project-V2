@@ -447,7 +447,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }) {
     const accent = Color(0xFFF9A825);
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       width: fullWidth ? double.infinity : null,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
@@ -480,8 +482,28 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             textAlign: TextAlign.center,
           ),
+          if (onTap != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'View',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    size: 10, color: accent),
+              ],
+            ),
+          ],
         ],
       ),
+    ),
     );
   }
 
