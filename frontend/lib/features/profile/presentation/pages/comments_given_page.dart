@@ -47,8 +47,72 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       _errorMessage = null;
     });
 
-    // TODO: implement Firestore query
-    setState(() => _isLoading = false);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'You must be signed in to view comments.';
+      });
+      return;
+    }
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final authorName = user.displayName ?? user.email ?? '';
+
+      // Fetch all complaints
+      final complaintsSnap = await firestore
+          .collection('complaints')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      final List<CommentWithPost> results = [];
+
+      for (final complaintDoc in complaintsSnap.docs) {
+        // Query this complaint's comments subcollection for current user
+        final commentsSnap = await complaintDoc.reference
+            .collection('comments')
+            .where('author', isEqualTo: authorName)
+            .orderBy('timestamp', descending: true)
+            .get();
+
+        if (commentsSnap.docs.isEmpty) continue;
+
+        final complaint = Complaint.fromFirestore(complaintDoc);
+
+        for (final commentDoc in commentsSnap.docs) {
+          final data = commentDoc.data();
+          final ts = data['timestamp'] is Timestamp
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.now();
+
+          results.add(CommentWithPost(
+            commentId: commentDoc.id,
+            commentText: data['text'] as String? ?? '',
+            commentTimestamp: ts,
+            complaint: complaint,
+          ));
+        }
+      }
+
+      // Sort all comments by timestamp descending
+      results.sort((a, b) => b.commentTimestamp.compareTo(a.commentTimestamp));
+
+      if (mounted) {
+        setState(() {
+          _comments = results;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user comments: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load comments. Please try again.';
+        });
+      }
+    }
   }
 
   @override
