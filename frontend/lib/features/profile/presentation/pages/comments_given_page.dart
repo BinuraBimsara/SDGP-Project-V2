@@ -152,8 +152,114 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         ),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text('Loading...'),
+      body: RefreshIndicator(
+        onRefresh: _loadUserComments,
+        color: accent,
+        child: _buildBody(
+          isDark: isDark,
+          textColor: textColor,
+          subtextColor: isDark
+              ? Colors.white.withValues(alpha: 0.6)
+              : Colors.black54,
+          cardBg: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          accent: accent,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody({
+    required bool isDark,
+    required Color textColor,
+    required Color subtextColor,
+    required Color cardBg,
+    required Color accent,
+  }) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFF9A825),
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return _buildEmptyState(
+        icon: Icons.error_outline_rounded,
+        title: 'Something went wrong',
+        subtitle: _errorMessage!,
+        textColor: textColor,
+        subtextColor: subtextColor,
+      );
+    }
+
+    if (_comments.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.chat_bubble_outline_rounded,
+        title: 'No Comments Yet',
+        subtitle:
+            'Your comments on community reports will appear here. Start engaging with the community!',
+        textColor: textColor,
+        subtextColor: subtextColor,
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _comments.length,
+      itemBuilder: (context, index) {
+        return Placeholder(); // TODO: build comment card
+      },
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9A825).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 48, color: const Color(0xFFF9A825)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: subtextColor,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
