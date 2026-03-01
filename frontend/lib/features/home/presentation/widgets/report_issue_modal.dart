@@ -3,6 +3,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:spotit/features/complaints/data/models/complaint_model.dart';
+import 'package:spotit/main.dart';
 
 // ─── Helper: show the modal ─────────────────────────────────────────────────
 /// Call this from anywhere (e.g. FAB onPressed) to display the Report Issue
@@ -58,6 +61,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   String? _selectedCategory;
   final List<XFile> _pickedImages = [];
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'Pothole', 'icon': Icons.warning_amber_rounded},
@@ -110,6 +114,82 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   void _removeImage(int index) {
     setState(() => _pickedImages.removeAt(index));
+  }
+
+  // ── Submit Handler ──
+  Future<void> _handleSubmit() async {
+    // Basic validation
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+    final location = _locationController.text.trim();
+
+    if (title.isEmpty) {
+      _showError('Please enter a title for your report.');
+      return;
+    }
+    if (_selectedCategory == null) {
+      _showError('Please select a category.');
+      return;
+    }
+    if (description.isEmpty) {
+      _showError('Please enter a description.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _showError('You must be signed in to submit a report.');
+        return;
+      }
+
+      final complaint = Complaint(
+        id: '', // will be assigned by Firestore
+        title: title,
+        description: description,
+        category: _selectedCategory!,
+        status: 'Pending',
+        upvoteCount: 0,
+        commentCount: 0,
+        timestamp: DateTime.now(),
+        authorId: user.uid,
+        locationName: location,
+      );
+
+      final repo = RepositoryProvider.of(context);
+      await repo.createComplaint(complaint, images: _pickedImages);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report submitted successfully! 🎉'),
+          backgroundColor: Color(0xFF4CAF50),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Submit error: $e');
+      if (mounted) {
+        _showError('Failed to submit report. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   // ── Colors ──
@@ -223,10 +303,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      onPressed: () {
-                        // TODO: handle submission
-                        Navigator.pop(context);
-                      },
+                      onPressed:
+                          _isSubmitting ? null : _handleSubmit,
                     ),
                   ),
                 ],
@@ -265,10 +343,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              // TODO: handle submission
-              Navigator.pop(context);
-            },
+            onTap: _isSubmitting ? null : _handleSubmit,
             child: const Text(
               'Submit',
               style: TextStyle(

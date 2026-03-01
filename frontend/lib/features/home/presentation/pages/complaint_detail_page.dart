@@ -33,6 +33,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   final ScrollController _scrollController = ScrollController();
   late AnimationController _upvoteBounceController;
   late Animation<double> _upvoteBounceAnimation;
+  int _currentImagePage = 0;
 
   @override
   void initState() {
@@ -297,25 +298,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image
-                    if (_complaint.imageUrl.isNotEmpty)
-                      Image.network(
-                        _complaint.imageUrl,
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          height: 250,
-                          color: inputBg,
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: Colors.grey,
-                              size: 50,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // Image(s) — carousel if multiple, single if one
+                    _buildImageSection(inputBg),
 
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -552,6 +536,85 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Builds the image section: carousel if multiple images, single if one.
+  Widget _buildImageSection(Color inputBg) {
+    // Collect all image URLs, preferring imageUrls list over single imageUrl
+    final List<String> urls = _complaint.imageUrls.isNotEmpty
+        ? _complaint.imageUrls
+        : (_complaint.imageUrl.isNotEmpty ? [_complaint.imageUrl] : []);
+
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    // Single image — no carousel needed
+    if (urls.length == 1) {
+      return Image.network(
+        urls.first,
+        height: 250,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 250,
+          color: inputBg,
+          child: const Center(
+            child: Icon(Icons.broken_image_outlined,
+                color: Colors.grey, size: 50),
+          ),
+        ),
+      );
+    }
+
+    // Multiple images — PageView carousel with indicators
+    return SizedBox(
+      height: 250,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          PageView.builder(
+            itemCount: urls.length,
+            onPageChanged: (i) => setState(() => _currentImagePage = i),
+            itemBuilder: (context, index) {
+              return Image.network(
+                urls[index],
+                height: 250,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 250,
+                  color: inputBg,
+                  child: const Center(
+                    child: Icon(Icons.broken_image_outlined,
+                        color: Colors.grey, size: 50),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Dot indicators
+          Positioned(
+            bottom: 12,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(urls.length, (i) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentImagePage == i ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentImagePage == i
+                        ? const Color(0xFFF9A825)
+                        : Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
