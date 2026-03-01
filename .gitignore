@@ -21,7 +21,7 @@ frontend/ios/Flutter/ephemeral/
 frontend/macos/Flutter/ephemeral/
 frontend/windows/flutter/ephemeral/
 frontend/linux/flutter/ephemeral/
-
+frontend/macos/Flutter/GeneratedPluginRegistrant.swift
 # Miscellaneous
 *.log
 *.swp
