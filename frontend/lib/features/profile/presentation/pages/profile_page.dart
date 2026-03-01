@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:spotit/features/profile/presentation/pages/comments_given_page.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  /// Callback to switch the bottom navigation tab (used to jump to Reports tab).
+  final void Function(int index)? onSwitchTab;
+
+  const ProfilePage({super.key, this.onSwitchTab});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -326,6 +330,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             textColor: textColor,
                             subtextColor: subtextColor,
                             isDark: isDark,
+                            onTap: () {
+                              // Switch to the My Reports tab (index 2)
+                              widget.onSwitchTab?.call(2);
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -352,6 +360,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       subtextColor: subtextColor,
                       isDark: isDark,
                       fullWidth: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CommentsGivenPage(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -443,10 +459,13 @@ class _ProfilePageState extends State<ProfilePage> {
     required Color subtextColor,
     required bool isDark,
     bool fullWidth = false,
+    VoidCallback? onTap,
   }) {
     const accent = Color(0xFFF9A825);
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       width: fullWidth ? double.infinity : null,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
@@ -479,8 +498,28 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             textAlign: TextAlign.center,
           ),
+          if (onTap != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'View',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    size: 10, color: accent),
+              ],
+            ),
+          ],
         ],
       ),
+    ),
     );
   }
 

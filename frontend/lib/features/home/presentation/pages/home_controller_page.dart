@@ -38,7 +38,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       case 2:
         return MyReportsPage(key: _pageKey);
       case 3:
-        return ProfilePage(key: _pageKey);
+        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
       default:
         return HomeFeedPage(key: _pageKey);
     }
