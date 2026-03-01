@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
-// ─── Animated Blur Route ─────────────────────────────────────────────────────
+// ─── Show Sign-Up Dialog ─────────────────────────────────────────────────────
 
 /// Shows the [SignUpDialog] with a blurred backdrop that fades in,
 /// and the dialog card itself scales + fades in (pop-up effect).
@@ -25,6 +25,10 @@ Future<void> showSignUpDialog(BuildContext context) {
   );
 }
 
+// ─── Role Enum ───────────────────────────────────────────────────────────────
+
+enum _SignUpRole { citizen, official }
+
 // ─── Sign Up Dialog ──────────────────────────────────────────────────────────
 
 class SignUpDialog extends StatefulWidget {
@@ -36,13 +40,17 @@ class SignUpDialog extends StatefulWidget {
 
 class _SignUpDialogState extends State<SignUpDialog>
     with SingleTickerProviderStateMixin {
-  static const Color _green = Color(0xFF2EAA5E);
+  static const Color _amber = Color(0xFFF9A825);
+  static const Color _lightAmber = Color(0xFFFFF8E1);
 
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _blurAnimation;
   late final Animation<Offset> _slideAnimation;
+
+  _SignUpRole _selectedRole = _SignUpRole.citizen;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -94,18 +102,25 @@ class _SignUpDialogState extends State<SignUpDialog>
     if (mounted) Navigator.of(context).pop();
   }
 
-  void _handleGoogleSignUp(BuildContext context) async {
+  // ─── Citizen Google Sign-Up ────────────────────────────────
+
+  Future<void> _handleGoogleSignUp() async {
+    setState(() => _isLoading = true);
     try {
       final userCredential = await AuthService().signInWithGoogle();
-      if (userCredential == null) return; // cancelled
-      if (!context.mounted) return;
+      if (userCredential == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return; // cancelled
+      }
+      if (!mounted) return;
       Navigator.of(context).pop(); // close dialog
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeControllerPage()),
       );
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sign-up failed: ${e.toString()}'),
@@ -115,6 +130,8 @@ class _SignUpDialogState extends State<SignUpDialog>
       );
     }
   }
+
+  // ─── Build ─────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -185,85 +202,228 @@ class _SignUpDialogState extends State<SignUpDialog>
                 ],
               ),
               padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Header Row ──
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                            fontSize: 20,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: _dismiss,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.close,
-                              color: Colors.black45, size: 18),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // ── Subtitle ──
-                  Text(
-                    'Sign up with your Google account to get started.',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 13.5,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-
-                  // ── Google Sign-Up Button ──
-                  OutlinedButton(
-                    onPressed: () => _handleGoogleSignUp(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      side: BorderSide(color: _green.withValues(alpha: 0.45)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      backgroundColor: Colors.white.withValues(alpha: 0.5),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── Header Row ──
+                    Row(
                       children: [
-                        _GoogleLogoSmall(size: 20),
-                        SizedBox(width: 10),
-                        Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                        const Expanded(
+                          child: Text(
+                            'Create Account',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                              fontSize: 20,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _dismiss,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close,
+                                color: Colors.black45, size: 18),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Select your role and sign up.',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 13.5,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Role Selector ──
+                    _buildRoleSelector(),
+                    const SizedBox(height: 20),
+
+                    // ── Content based on selected role ──
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _selectedRole == _SignUpRole.citizen
+                          ? _buildCitizenSignUp()
+                          : const SizedBox.shrink(key: ValueKey('official-placeholder')),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ─── Role Selector ────────────────────────────────────────
+
+  Widget _buildRoleSelector() {
+    return Column(
+      children: [
+        Text(
+          'I am a',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _roleCard(
+                _SignUpRole.citizen,
+                Icons.person_outline,
+                'Citizen',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _roleCard(
+                _SignUpRole.official,
+                Icons.shield_outlined,
+                'Official',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _roleCard(_SignUpRole role, IconData icon, String label) {
+    final isSelected = _selectedRole == role;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedRole = role;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? _lightAmber : Colors.grey[100],
+          border: Border.all(
+            color: isSelected ? _amber : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 28, color: isSelected ? _amber : Colors.grey[500]),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isSelected ? _amber : Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Citizen Sign-Up (Google) ─────────────────────────────
+
+  Widget _buildCitizenSignUp() {
+    return Column(
+      key: const ValueKey('citizen-signup'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Sign up with your Google account.',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Google Sign-Up Button ──
+        OutlinedButton(
+          onPressed: _isLoading ? null : _handleGoogleSignUp,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            side: BorderSide(color: _amber.withValues(alpha: 0.45)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            backgroundColor: Colors.white.withValues(alpha: 0.5),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _GoogleLogoSmall(size: 20),
+                    SizedBox(width: 10),
+                    Text(
+                      'Continue with Google',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Terms ──
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: TextStyle(
+              fontSize: 11.5,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+            children: const [
+              TextSpan(text: 'By signing up, you agree to our '),
+              TextSpan(
+                text: 'Terms of Service',
+                style: TextStyle(
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              TextSpan(text: ' and '),
+              TextSpan(
+                text: 'Privacy Policy',
+                style: TextStyle(
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
