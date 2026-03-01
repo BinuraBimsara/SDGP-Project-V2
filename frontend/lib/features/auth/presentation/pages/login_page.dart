@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:spotit/features/auth/presentation/pages/google_signup_page.dart';
+import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
 /// Roles supported by the login page.
