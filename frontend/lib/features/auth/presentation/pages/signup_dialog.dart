@@ -51,6 +51,13 @@ class _SignUpDialogState extends State<SignUpDialog>
 
   _SignUpRole _selectedRole = _SignUpRole.citizen;
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -94,6 +101,9 @@ class _SignUpDialogState extends State<SignUpDialog>
   @override
   void dispose() {
     _controller.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -255,7 +265,7 @@ class _SignUpDialogState extends State<SignUpDialog>
                       duration: const Duration(milliseconds: 250),
                       child: _selectedRole == _SignUpRole.citizen
                           ? _buildCitizenSignUp()
-                          : const SizedBox.shrink(key: ValueKey('official-placeholder')),
+                          : _buildOfficialSignUp(),
                     ),
                   ],
                 ),
@@ -310,6 +320,9 @@ class _SignUpDialogState extends State<SignUpDialog>
       onTap: () {
         setState(() {
           _selectedRole = role;
+          _emailController.clear();
+          _passwordController.clear();
+          _confirmPasswordController.clear();
         });
       },
       child: AnimatedContainer(
@@ -424,6 +437,213 @@ class _SignUpDialogState extends State<SignUpDialog>
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+
+  // ─── Official Sign-Up (Email + Password) ──────────────
+
+  // Official sign-up handler
+  Future<void> _handleOfficialSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      await AuthService().createOfficialAccount(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(); // close dialog
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-up failed: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Widget _buildOfficialSignUp() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        key: const ValueKey('official-signup'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Info Banner ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: _lightAmber,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: const Color(0xFFFFD54F), width: 1.2),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline,
+                    size: 18, color: Color(0xFFF9A825)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Create an account using your official government email.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.orange[900],
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Email Field ──
+          _buildLabel('Government Email'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: _inputDecoration('official@dept.gov.lk'),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Email is required';
+              if (!v.contains('@')) return 'Enter a valid email';
+              if (!v.trim().toLowerCase().endsWith('.gov.lk')) {
+                return 'Must use a .gov.lk email';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // ── Password Field ──
+          _buildLabel('Create Password'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: _inputDecoration('••••••••').copyWith(
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Password is required';
+              if (v.length < 6) return 'At least 6 characters';
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // ── Confirm Password Field ──
+          _buildLabel('Confirm Password'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: _obscureConfirm,
+            decoration: _inputDecoration('••••••••').copyWith(
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Confirm your password';
+              if (v != _passwordController.text) return 'Passwords do not match';
+              return null;
+            },
+          ),
+          const SizedBox(height: 22),
+
+          // ── Sign Up Button ──
+          SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _handleOfficialSignUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _amber,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Create Account',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        color: Colors.black87,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[400]),
+      filled: true,
+      fillColor: Colors.grey[100],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: _amber, width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
     );
   }
 }
