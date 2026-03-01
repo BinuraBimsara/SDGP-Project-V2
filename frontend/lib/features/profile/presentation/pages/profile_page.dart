@@ -443,6 +443,7 @@ class _ProfilePageState extends State<ProfilePage> {
     required Color subtextColor,
     required bool isDark,
     bool fullWidth = false,
+    VoidCallback? onTap,
   }) {
     const accent = Color(0xFFF9A825);
 
