@@ -26,8 +26,10 @@ service cloud.firestore {
     match /users/{userId} {
       // Users can read their own profile; government can read any
       allow read: if isOwner(userId) || isGovernment();
-      // Only Cloud Functions (admin SDK) can create/update profiles
-      allow write: if false;
+      // Allow a new user to create their own profile document
+      allow create: if isOwner(userId);
+      // Only Cloud Functions (admin SDK) can update/delete profiles
+      allow update, delete: if false;
 
       // Notifications subcollection
       match /notifications/{notifId} {
