@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
@@ -119,14 +120,35 @@ class _SignUpDialogState extends State<SignUpDialog>
     try {
       final userCredential = await AuthService().signInWithGoogle();
       if (userCredential == null) {
-        if (mounted) setState(() => _isLoading = false);
-        return; // cancelled
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Google sign-up was cancelled or redirected. Please wait a moment and try again if needed.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
       }
       if (!mounted) return;
       Navigator.of(context).pop(); // close dialog
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      final message = e.message ?? 'Authentication failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google sign-up failed (${e.code}): $message'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
