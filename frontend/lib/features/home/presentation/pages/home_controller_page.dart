@@ -17,6 +17,32 @@ class HomeControllerPage extends StatefulWidget {
 class _HomeControllerPageState extends State<HomeControllerPage>
     with SingleTickerProviderStateMixin {
   int _currentNavIndex = 0;
+  // Key that changes on every tab switch to force page rebuild
+  Key _pageKey = UniqueKey();
+
+  void _switchTab(int index) {
+    if (index != _currentNavIndex) {
+      setState(() {
+        _currentNavIndex = index;
+        _pageKey = UniqueKey();
+      });
+    }
+  }
+
+  Widget _currentPage() {
+    switch (_currentNavIndex) {
+      case 0:
+        return HomeFeedPage(key: _pageKey);
+      case 1:
+        return NotificationsPage(key: _pageKey);
+      case 2:
+        return MyReportsPage(key: _pageKey);
+      case 3:
+        return ProfilePage(key: _pageKey);
+      default:
+        return HomeFeedPage(key: _pageKey);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,15 +50,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       drawer: _buildDrawer(),
-      body: IndexedStack(
-        index: _currentNavIndex,
-        children: const [
-          HomeFeedPage(),
-          NotificationsPage(),
-          MyReportsPage(),
-          ProfilePage(),
-        ],
-      ),
+      body: _currentPage(),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -303,11 +321,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     final inactiveColor = isDark ? Colors.white.withAlpha(102) : Colors.black38;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentNavIndex = index;
-        });
-      },
+      onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 56,

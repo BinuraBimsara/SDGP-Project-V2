@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -78,20 +79,32 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
   @override
   Future<Complaint> toggleUpvote(String complaintId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
     final docRef = _complaintsRef.doc(complaintId);
     final doc = await docRef.get();
     if (!doc.exists) throw Exception('Complaint not found');
 
     final data = doc.data()!;
-    final currentCount = (data['upvoteCount'] as num?)?.toInt() ?? 0;
+    final List<String> currentVoters =
+        data['upvotedBy'] != null ? List<String>.from(data['upvotedBy']) : [];
 
-    // Increment (toggle up). For a full per-user toggle you'd track
-    // user IDs in an array, but for now we just increment by 1.
-    final newCount = currentCount + 1;
+    final bool alreadyUpvoted = currentVoters.contains(user.uid);
 
-    await docRef.update({
-      'upvoteCount': newCount,
-    });
+    if (alreadyUpvoted) {
+      // Remove the user's upvote
+      await docRef.update({
+        'upvotedBy': FieldValue.arrayRemove([user.uid]),
+        'upvoteCount': FieldValue.increment(-1),
+      });
+    } else {
+      // Add the user's upvote
+      await docRef.update({
+        'upvotedBy': FieldValue.arrayUnion([user.uid]),
+        'upvoteCount': FieldValue.increment(1),
+      });
+    }
 
     return Complaint.fromFirestore(await docRef.get());
   }

@@ -629,10 +629,8 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                   );
                 }
               });
-              // Persist to database — only increment, not decrement
-              if (isUpvoted) {
-                _repository.toggleUpvote(_complaints[index].id);
-              }
+              // Persist toggle to database (handles both add/remove)
+              _repository.toggleUpvote(_complaints[index].id);
             },
             onTap: () async {
               final result = await Navigator.push<Complaint>(
