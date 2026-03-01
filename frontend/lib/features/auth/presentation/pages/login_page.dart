@@ -66,13 +66,32 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Official email/password sign-in → navigate to home (no backend).
-  void _handleOfficialSignIn() {
+  /// Official email/password sign-in → navigate to home.
+  Future<void> _handleOfficialSignIn() async {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-    );
+    setState(() => _isLoading = true);
+    try {
+      await AuthService().signInOfficial(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-in failed: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ─── Build ───────────────────────────────────────────────
@@ -266,6 +285,8 @@ class _LoginPageState extends State<LoginPage> {
 
         // ── Sign In Button ──
         _buildSignInButton(),
+        const SizedBox(height: 16),
+        _buildSignUpLink(),
       ],
     );
   }
