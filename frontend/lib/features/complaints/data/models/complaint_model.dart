@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Complaint model with Firestore serialization support.
 class Complaint {
@@ -17,6 +18,9 @@ class Complaint {
   final double? latitude;
   final double? longitude;
   final bool isUpvoted;
+
+  /// List of user UIDs who have upvoted this complaint.
+  final List<String> upvotedBy;
 
   /// Transient property to hold the calculated distance from a specific location
   final double? distanceInMeters;
@@ -37,6 +41,7 @@ class Complaint {
     this.latitude,
     this.longitude,
     this.isUpvoted = false,
+    this.upvotedBy = const [],
     this.distanceInMeters,
   });
 
@@ -65,6 +70,13 @@ class Complaint {
       ts = DateTime.now();
     }
 
+    // Read upvotedBy array and check if current user has upvoted
+    final List<String> voters =
+        data['upvotedBy'] != null ? List<String>.from(data['upvotedBy']) : [];
+
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final hasUpvoted = voters.contains(currentUid);
+
     return Complaint(
       id: doc.id,
       title: data['title'] as String? ?? '',
@@ -73,13 +85,15 @@ class Complaint {
       imageUrl: urls.isNotEmpty ? urls.first : '',
       imageUrls: urls,
       status: data['status'] as String? ?? 'Pending',
-      upvoteCount: (data['upvoteCount'] as num?)?.toInt() ?? 0,
+      upvoteCount: (data['upvoteCount'] as num?)?.toInt() ?? voters.length,
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       timestamp: ts,
       authorId: data['authorId'] as String? ?? '',
       locationName: data['locationName'] as String? ?? '',
       latitude: (data['latitude'] as num?)?.toDouble(),
       longitude: (data['longitude'] as num?)?.toDouble(),
+      isUpvoted: hasUpvoted,
+      upvotedBy: voters,
     );
   }
 
@@ -99,6 +113,7 @@ class Complaint {
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
+      'upvotedBy': upvotedBy,
     };
   }
 
@@ -118,6 +133,7 @@ class Complaint {
     double? latitude,
     double? longitude,
     bool? isUpvoted,
+    List<String>? upvotedBy,
     double? distanceInMeters,
   }) {
     return Complaint(
@@ -136,6 +152,7 @@ class Complaint {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isUpvoted: isUpvoted ?? this.isUpvoted,
+      upvotedBy: upvotedBy ?? this.upvotedBy,
       distanceInMeters: distanceInMeters ?? this.distanceInMeters,
     );
   }
@@ -158,6 +175,7 @@ class Complaint {
       'latitude': latitude,
       'longitude': longitude,
       'isUpvoted': isUpvoted,
+      'upvotedBy': upvotedBy,
     };
   }
 

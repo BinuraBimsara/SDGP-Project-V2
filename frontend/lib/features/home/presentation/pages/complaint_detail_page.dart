@@ -108,12 +108,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     });
     _upvoteBounceController.forward(from: 0);
 
-    // Persist upvote to Firebase only when upvoting (not un-upvoting)
-    if (_hasUpvoted) {
-      _repository.toggleUpvote(_complaint.id).then((_) {}).catchError((e) {
-        debugPrint('Error toggling upvote: $e');
-      });
-    }
+    // Persist upvote toggle to Firebase (handles both add/remove)
+    _repository.toggleUpvote(_complaint.id).then((_) {}).catchError((e) {
+      debugPrint('Error toggling upvote: $e');
+    });
   }
 
   void _addComment() {
