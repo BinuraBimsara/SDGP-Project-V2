@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
@@ -47,32 +46,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
     try {
       final userCredential = await AuthService().signInWithGoogle();
-      if (userCredential == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Google sign-in was cancelled or redirected. Please wait a moment and try again if needed.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
+      if (userCredential == null) return; // cancelled
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      final message = e.message ?? 'Authentication failed';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google sign-in failed (${e.code}): $message'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -101,16 +79,6 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      final message = e.message ?? 'Authentication failed';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign-in failed (${e.code}): $message'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
       );
     } catch (e) {
       if (!mounted) return;
