@@ -210,7 +210,14 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: _comments.length,
       itemBuilder: (context, index) {
-        return Placeholder(); // TODO: build comment card
+        return _buildCommentCard(
+          _comments[index],
+          isDark: isDark,
+          textColor: textColor,
+          subtextColor: subtextColor,
+          cardBg: cardBg,
+          accent: accent,
+        );
       },
     );
   }
@@ -260,6 +267,222 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCommentCard(
+    CommentWithPost item, {
+    required bool isDark,
+    required Color textColor,
+    required Color subtextColor,
+    required Color cardBg,
+    required Color accent,
+  }) {
+    final complaint = item.complaint;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ComplaintDetailPage(complaint: complaint),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Post preview section ──
+            _buildPostPreview(
+              complaint,
+              isDark: isDark,
+              textColor: textColor,
+              subtextColor: subtextColor,
+              accent: accent,
+            ),
+
+            // ── Divider ──
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+
+            // ── User's comment section (placeholder) ──
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                item.commentText,
+                style: TextStyle(color: textColor, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostPreview(
+    Complaint complaint, {
+    required bool isDark,
+    required Color textColor,
+    required Color subtextColor,
+    required Color accent,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thumbnail
+          if (complaint.imageUrls.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                complaint.imageUrls.first,
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.image_outlined,
+                      color: accent.withValues(alpha: 0.5), size: 24),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.location_on_outlined,
+                  color: accent.withValues(alpha: 0.5), size: 24),
+            ),
+
+          const SizedBox(width: 12),
+
+          // Post info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  complaint.title,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _buildTag(complaint.category, accent),
+                    const SizedBox(width: 8),
+                    _buildStatusDot(complaint.status),
+                    const SizedBox(width: 4),
+                    Text(
+                      complaint.status,
+                      style: TextStyle(color: subtextColor, fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                if (complaint.locationName.isNotEmpty)
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined,
+                          size: 12, color: subtextColor),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          complaint.locationName,
+                          style: TextStyle(color: subtextColor, fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+
+          // Chevron
+          Icon(Icons.chevron_right_rounded, color: subtextColor, size: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTag(String label, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: accent,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusDot(String status) {
+    Color dotColor;
+    switch (status.toLowerCase()) {
+      case 'resolved':
+        dotColor = const Color(0xFF4CAF50);
+        break;
+      case 'in progress':
+        dotColor = const Color(0xFFF9A825);
+        break;
+      default:
+        dotColor = const Color(0xFFEF5350);
+    }
+
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: dotColor,
+        shape: BoxShape.circle,
       ),
     );
   }
