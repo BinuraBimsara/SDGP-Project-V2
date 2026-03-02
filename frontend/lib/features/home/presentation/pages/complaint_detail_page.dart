@@ -114,6 +114,97 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     });
   }
 
+  bool get _isAuthor {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return currentUid.isNotEmpty && currentUid == _complaint.authorId;
+  }
+
+  void _confirmDelete() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded,
+                color: Color(0xFFEF5350), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Complaint',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete this complaint? This action cannot be undone.',
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _performDelete();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF5350),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performDelete() async {
+    try {
+      await _repository.deleteComplaint(_complaint.id);
+      if (!mounted) return;
+      Navigator.pop(context, 'deleted');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Complaint deleted successfully'),
+          backgroundColor: const Color(0xFFF9A825),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error deleting complaint: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to delete complaint'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
   void _addComment() {
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
@@ -317,6 +408,13 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
           ),
           centerTitle: true,
           actions: [
+            if (_isAuthor)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded,
+                    color: Color(0xFFEF5350)),
+                onPressed: _confirmDelete,
+                tooltip: 'Delete',
+              ),
             IconButton(
               icon: const Icon(Icons.flag_outlined, color: Color(0xFFEF5350)),
               onPressed: _showReportDialog,
