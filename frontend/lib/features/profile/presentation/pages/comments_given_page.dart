@@ -3,8 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
-import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
-import 'package:spotit/main.dart';
 
 /// A model representing a user comment alongside the parent complaint.
 class CommentWithPost {
@@ -31,9 +29,11 @@ class CommentsGivenPage extends StatefulWidget {
 }
 
 class _CommentsGivenPageState extends State<CommentsGivenPage> {
-  List<CommentWithPost> _comments = [];
+  List<CommentWithPost> _allComments = [];
+  List<CommentWithPost> _displayedComments = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _sortOrder = 'newest';
 
   @override
   void initState() {
@@ -96,7 +96,8 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
 
       if (mounted) {
         setState(() {
-          _comments = results;
+          _allComments = results;
+          _displayedComments = List.from(results);
           _isLoading = false;
         });
       }
@@ -109,6 +110,20 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         });
       }
     }
+  }
+
+  void _applySortOrder(String order) {
+    setState(() {
+      _sortOrder = order;
+      _displayedComments = List.from(_allComments);
+      if (order == 'oldest') {
+        _displayedComments
+            .sort((a, b) => a.commentTimestamp.compareTo(b.commentTimestamp));
+      } else {
+        _displayedComments
+            .sort((a, b) => b.commentTimestamp.compareTo(a.commentTimestamp));
+      }
+    });
   }
 
   @override
