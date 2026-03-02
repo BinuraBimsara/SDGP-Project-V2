@@ -110,13 +110,21 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<int> addComment(String complaintId, String author, String text) async {
+  Future<int> addComment(
+    String complaintId,
+    String author,
+    String text, {
+    required String authorId,
+    String? parentCommentId,
+  }) async {
     final docRef = _complaintsRef.doc(complaintId);
 
     // 1. Add comment to the comments subcollection
     await docRef.collection('comments').add({
       'author': author,
+      'authorId': authorId,
       'text': text,
+      'parentCommentId': parentCommentId,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -144,12 +152,43 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       return {
         'id': doc.id,
         'author': data['author'] as String? ?? 'Anonymous',
+        'authorId': data['authorId'] as String? ?? '',
         'text': data['text'] as String? ?? '',
+        'parentCommentId': data['parentCommentId'] as String?,
         'timestamp': data['timestamp'] is Timestamp
             ? (data['timestamp'] as Timestamp).toDate()
             : DateTime.now(),
       };
     }).toList();
+  }
+
+  @override
+  Future<void> deleteComment(String complaintId, String commentId) async {
+    final docRef = _complaintsRef.doc(complaintId);
+    final commentsCol = docRef.collection('comments');
+
+    // 1. Recursively collect this comment and all nested replies
+    final idsToDelete = <String>[commentId];
+    Future<void> collectReplies(String parentId) async {
+      final replies =
+          await commentsCol.where('parentCommentId', isEqualTo: parentId).get();
+      for (final reply in replies.docs) {
+        idsToDelete.add(reply.id);
+        await collectReplies(reply.id);
+      }
+    }
+
+    await collectReplies(commentId);
+
+    // 2. Delete all collected comments
+    for (final id in idsToDelete) {
+      await commentsCol.doc(id).delete();
+    }
+
+    // 3. Decrement commentCount by the number of deleted comments
+    await docRef.update({
+      'commentCount': FieldValue.increment(-idsToDelete.length),
+    });
   }
 
   @override
