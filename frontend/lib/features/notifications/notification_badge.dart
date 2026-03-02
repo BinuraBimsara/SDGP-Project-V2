@@ -36,6 +36,13 @@ class NotificationBadge {
       isUnread: false,
     ),
   ];
+
+  static void markAllRead() {
+    for (final n in notifications) {
+      n.isUnread = false;
+    }
+    unreadCount.value = 0;
+  }
 }
 
 class NotificationData {
