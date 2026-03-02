@@ -14,6 +14,7 @@ class Complaint {
   final int commentCount;
   final DateTime timestamp;
   final String authorId;
+  final String authorName;
   final String locationName;
   final double? latitude;
   final double? longitude;
@@ -37,6 +38,7 @@ class Complaint {
     this.commentCount = 0,
     required this.timestamp,
     required this.authorId,
+    this.authorName = '',
     this.locationName = '',
     this.latitude,
     this.longitude,
@@ -89,6 +91,7 @@ class Complaint {
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       timestamp: ts,
       authorId: data['authorId'] as String? ?? '',
+      authorName: data['authorName'] as String? ?? '',
       locationName: data['locationName'] as String? ?? '',
       latitude: (data['latitude'] as num?)?.toDouble(),
       longitude: (data['longitude'] as num?)?.toDouble(),
@@ -110,6 +113,7 @@ class Complaint {
       'commentCount': commentCount,
       'timestamp': Timestamp.fromDate(timestamp),
       'authorId': authorId,
+      'authorName': authorName,
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
@@ -129,6 +133,7 @@ class Complaint {
     int? commentCount,
     DateTime? timestamp,
     String? authorId,
+    String? authorName,
     String? locationName,
     double? latitude,
     double? longitude,
@@ -148,6 +153,7 @@ class Complaint {
       commentCount: commentCount ?? this.commentCount,
       timestamp: timestamp ?? this.timestamp,
       authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
       locationName: locationName ?? this.locationName,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -171,6 +177,7 @@ class Complaint {
       'commentCount': commentCount,
       'timestamp': timestamp.toIso8601String(),
       'authorId': authorId,
+      'authorName': authorName,
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
