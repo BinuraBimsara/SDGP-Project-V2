@@ -131,4 +131,9 @@ class DummyComplaintRepository implements ComplaintRepository {
     // Dummy repository returns empty comments
     return [];
   }
+
+  @override
+  Future<void> deleteComplaint(String complaintId) async {
+    _complaints.removeWhere((c) => c.id == complaintId);
+  }
 }

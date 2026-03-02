@@ -161,4 +161,18 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final doc = await _complaintsRef.doc(complaintId).get();
     return Complaint.fromFirestore(doc);
   }
+
+  @override
+  Future<void> deleteComplaint(String complaintId) async {
+    final docRef = _complaintsRef.doc(complaintId);
+
+    // 1. Delete all comments in the subcollection
+    final commentsSnapshot = await docRef.collection('comments').get();
+    for (final commentDoc in commentsSnapshot.docs) {
+      await commentDoc.reference.delete();
+    }
+
+    // 2. Delete the complaint document itself
+    await docRef.delete();
+  }
 }
