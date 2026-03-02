@@ -357,6 +357,37 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
+                                    if (_complaint.authorName.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 12,
+                                            backgroundColor:
+                                                const Color(0xFFF9A825)
+                                                    .withValues(alpha: 0.2),
+                                            child: Text(
+                                              _complaint.authorName[0]
+                                                  .toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Color(0xFFF9A825),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _complaint.authorName,
+                                            style: TextStyle(
+                                              color: metaColor,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                     const SizedBox(height: 12),
 
                                     // Badges
