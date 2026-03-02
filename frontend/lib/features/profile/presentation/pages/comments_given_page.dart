@@ -61,19 +61,15 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       final authorName = user.displayName ?? user.email ?? '';
 
       // Fetch all complaints
-      final complaintsSnap = await firestore
-          .collection('complaints')
-          .orderBy('timestamp', descending: true)
-          .get();
+      final complaintsSnap = await firestore.collection('complaints').get();
 
       final List<CommentWithPost> results = [];
 
       for (final complaintDoc in complaintsSnap.docs) {
-        // Query this complaint's comments subcollection for current user
+        // Only filter by author — no orderBy to avoid composite index requirement
         final commentsSnap = await complaintDoc.reference
             .collection('comments')
             .where('author', isEqualTo: authorName)
-            .orderBy('timestamp', descending: true)
             .get();
 
         if (commentsSnap.docs.isEmpty) continue;
