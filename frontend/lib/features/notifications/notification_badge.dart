@@ -6,7 +6,36 @@ import 'package:flutter/material.dart';
 class NotificationBadge {
   NotificationBadge._();
 
-  static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
+  static final ValueNotifier<int> unreadCount = ValueNotifier<int>(2);
+
+  /// The canonical list of notifications — shared across rebuilds.
+  static final List<NotificationData> notifications = [
+    NotificationData(
+      icon: Icons.check_circle_outline,
+      iconColor: const Color(0xFF4CAF50),
+      title: 'Report Status Updated',
+      description:
+          'Your report "Large pothole on Main Street" has been marked as In Progress',
+      time: '1h ago',
+      isUnread: true,
+    ),
+    NotificationData(
+      icon: Icons.chat_bubble_outline,
+      iconColor: const Color(0xFF90CAF9),
+      title: 'New Comment',
+      description: 'A government official commented on your report',
+      time: '2h ago',
+      isUnread: true,
+    ),
+    NotificationData(
+      icon: Icons.arrow_upward,
+      iconColor: const Color(0xFF4CAF50),
+      title: 'Report Upvoted',
+      description: 'Your report received 5 new upvotes',
+      time: '1d ago',
+      isUnread: false,
+    ),
+  ];
 }
 
 class NotificationData {
