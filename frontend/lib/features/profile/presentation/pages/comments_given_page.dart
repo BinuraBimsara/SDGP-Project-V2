@@ -130,6 +130,8 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
+    final subtextColor =
+        isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black45;
     const accent = Color(0xFFF9A825);
 
     return Scaffold(
@@ -139,29 +141,21 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(
-            Icons.arrow_back_ios_rounded,
-            color: isDark ? Colors.white : Colors.black87,
-            size: 20,
+            Icons.arrow_back_rounded,
+            color: textColor,
+            size: 24,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chat_bubble_outline_rounded,
-                color: accent, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Comments Given',
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
+        title: Text(
+          'Comments',
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
-        centerTitle: true,
+        centerTitle: false,
       ),
       body: RefreshIndicator(
         onRefresh: _loadUserComments,
@@ -169,10 +163,7 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         child: _buildBody(
           isDark: isDark,
           textColor: textColor,
-          subtextColor: isDark
-              ? Colors.white.withValues(alpha: 0.6)
-              : Colors.black54,
-          cardBg: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          subtextColor: subtextColor,
           accent: accent,
         ),
       ),
@@ -183,7 +174,6 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
     required bool isDark,
     required Color textColor,
     required Color subtextColor,
-    required Color cardBg,
     required Color accent,
   }) {
     if (_isLoading) {
@@ -205,31 +195,127 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       );
     }
 
-    if (_comments.isEmpty) {
+    if (_allComments.isEmpty) {
       return _buildEmptyState(
         icon: Icons.chat_bubble_outline_rounded,
         title: 'No Comments Yet',
         subtitle:
-            'Your comments on community reports will appear here. Start engaging with the community!',
+            'Your comments on community reports will appear here.\nStart engaging with the community!',
         textColor: textColor,
         subtextColor: subtextColor,
       );
     }
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: _comments.length,
-      itemBuilder: (context, index) {
-        return _buildCommentCard(
-          _comments[index],
-          isDark: isDark,
-          textColor: textColor,
-          subtextColor: subtextColor,
-          cardBg: cardBg,
-          accent: accent,
-        );
-      },
+    return Column(
+      children: [
+        // ── Filter chips row (Instagram-style) ──
+        _buildFilterRow(isDark: isDark, textColor: textColor, accent: accent),
+
+        // ── Comments list ──
+        Expanded(
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: _displayedComments.length,
+            separatorBuilder: (_, __) => Divider(
+              height: 1,
+              thickness: 0.5,
+              indent: 72,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+            itemBuilder: (context, index) {
+              return _buildCommentRow(
+                _displayedComments[index],
+                isDark: isDark,
+                textColor: textColor,
+                subtextColor: subtextColor,
+                accent: accent,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Filter chips ─────────────────────────────────────────────────────
+
+  Widget _buildFilterRow({
+    required bool isDark,
+    required Color textColor,
+    required Color accent,
+  }) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          _buildFilterChip(
+            label: _sortOrder == 'newest' ? 'Newest to oldest' : 'Oldest to newest',
+            icon: Icons.swap_vert_rounded,
+            isDark: isDark,
+            textColor: textColor,
+            accent: accent,
+            onTap: () {
+              _applySortOrder(_sortOrder == 'newest' ? 'oldest' : 'newest');
+            },
+          ),
+          const SizedBox(width: 8),
+          _buildFilterChip(
+            label: '${_displayedComments.length} comments',
+            icon: Icons.chat_outlined,
+            isDark: isDark,
+            textColor: textColor,
+            accent: accent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    required Color textColor,
+    required Color accent,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 4),
+              Icon(icon, size: 16, color: textColor),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
