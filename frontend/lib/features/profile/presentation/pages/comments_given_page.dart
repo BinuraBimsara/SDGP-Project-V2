@@ -19,8 +19,8 @@ class CommentWithPost {
   });
 }
 
-/// Page that shows all comments given by the current user alongside
-/// the complaint they were posted on — similar to Instagram's comment history.
+/// Instagram-style page showing all comments by the current user,
+/// each displayed alongside a thumbnail of the post commented on.
 class CommentsGivenPage extends StatefulWidget {
   const CommentsGivenPage({super.key});
 
@@ -40,6 +40,8 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
     super.initState();
     _loadUserComments();
   }
+
+  // ── Data fetching ──────────────────────────────────────────────────────
 
   Future<void> _loadUserComments() async {
     setState(() {
@@ -91,7 +93,7 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
         }
       }
 
-      // Sort all comments by timestamp descending
+      // Sort client-side (newest first by default)
       results.sort((a, b) => b.commentTimestamp.compareTo(a.commentTimestamp));
 
       if (mounted) {
@@ -125,6 +127,8 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       }
     });
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +244,7 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
     );
   }
 
-  // ── Filter chips ─────────────────────────────────────────────────────
+  // ── Filter chips ───────────────────────────────────────────────────────
 
   Widget _buildFilterRow({
     required bool isDark,
@@ -314,55 +318,6 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
               Icon(icon, size: 16, color: textColor),
             ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color textColor,
-    required Color subtextColor,
-  }) {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9A825).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 48, color: const Color(0xFFF9A825)),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: subtextColor,
-                  fontSize: 13,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -512,6 +467,59 @@ class _CommentsGivenPageState extends State<CommentsGivenPage> {
       ),
     );
   }
+
+  // ── Empty state ────────────────────────────────────────────────────────
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9A825).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 48, color: const Color(0xFFF9A825)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: subtextColor,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
 
   String _formatTimeAgo(DateTime dateTime) {
     final now = DateTime.now();
