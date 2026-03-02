@@ -228,25 +228,23 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     );
   }
 
-  // ── Reusable blurred + animated dialog ──
+  // ── Reusable blurred + animated dialog (optimized for low-end devices) ──
   Future<T?> _showBlurredDialog<T>(Widget child) {
     return showGeneralDialog<T>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       barrierColor: Colors.black.withAlpha(80),
-      transitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 250),
       transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * anim.value,
-            sigmaY: 12 * anim.value,
-          ),
-          child: ScaleTransition(
-            scale: curved,
-            child: FadeTransition(
-              opacity: anim,
+        final curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: anim,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved),
               child: dialogChild,
             ),
           ),
@@ -633,7 +631,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
               _repository.toggleUpvote(_complaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push<Complaint>(
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) =>

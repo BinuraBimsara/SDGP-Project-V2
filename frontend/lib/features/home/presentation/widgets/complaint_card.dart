@@ -129,6 +129,27 @@ class _ComplaintCardState extends State<ComplaintCard>
                             fontSize: 16,
                           ),
                         ),
+                        if (widget.complaint.authorName.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline_rounded,
+                                size: 13,
+                                color: metaColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                widget.complaint.authorName,
+                                style: TextStyle(
+                                  color: subtextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         // Category & Status Badges
                         Wrap(
