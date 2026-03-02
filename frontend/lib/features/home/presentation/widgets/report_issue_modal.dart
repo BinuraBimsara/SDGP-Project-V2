@@ -156,6 +156,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         commentCount: 0,
         timestamp: DateTime.now(),
         authorId: user.uid,
+        authorName: user.displayName ?? user.email ?? 'Anonymous',
         locationName: location,
       );
 
