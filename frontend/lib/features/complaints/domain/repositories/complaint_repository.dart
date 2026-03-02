@@ -26,10 +26,21 @@ abstract class ComplaintRepository {
   Future<Complaint> toggleUpvote(String complaintId);
 
   /// Add a comment to a complaint. Returns the updated comment count.
-  Future<int> addComment(String complaintId, String author, String text);
+  /// [authorId] is the Firebase UID of the commenter.
+  /// [parentCommentId] is set when replying to an existing comment.
+  Future<int> addComment(
+    String complaintId,
+    String author,
+    String text, {
+    required String authorId,
+    String? parentCommentId,
+  });
 
   /// Fetch all comments for a complaint, ordered by timestamp ascending.
   Future<List<Map<String, dynamic>>> getComments(String complaintId);
+
+  /// Delete a single comment from a complaint. Also deletes child replies.
+  Future<void> deleteComment(String complaintId, String commentId);
 
   /// Update the status of a complaint (e.g., 'Pending' → 'In Progress' → 'Resolved').
   Future<Complaint> updateStatus(String complaintId, String newStatus);
