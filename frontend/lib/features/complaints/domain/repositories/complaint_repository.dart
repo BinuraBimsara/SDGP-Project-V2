@@ -33,4 +33,8 @@ abstract class ComplaintRepository {
 
   /// Update the status of a complaint (e.g., 'Pending' → 'In Progress' → 'Resolved').
   Future<Complaint> updateStatus(String complaintId, String newStatus);
+
+  /// Delete a complaint and all its associated data (comments, images).
+  /// Only the original author should be able to delete their complaint.
+  Future<void> deleteComplaint(String complaintId);
 }
