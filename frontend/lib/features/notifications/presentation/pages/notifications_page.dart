@@ -62,7 +62,7 @@ class NotificationsPage extends StatelessWidget {
                     child: const Text(
                       'Mark all read',
                       style: TextStyle(
-                        color: Color(0xFF4CAF50),
+                        color: Color(0xFFF9A825),
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
@@ -89,7 +89,7 @@ class NotificationsPage extends StatelessWidget {
                           : Colors.blueGrey.shade50;
                       final borderSide = item.isUnread
                           ? const BorderSide(
-                              color: Color(0xFF4CAF50), width: 1.5)
+                              color: Color(0xFFF9A825), width: 1.5)
                           : BorderSide(
                               color: isDark
                                   ? Colors.transparent
@@ -154,7 +154,7 @@ class NotificationsPage extends StatelessWidget {
                                           width: 10,
                                           height: 10,
                                           decoration: const BoxDecoration(
-                                            color: Color(0xFF4CAF50),
+                                            color: Color(0xFFF9A825),
                                             shape: BoxShape.circle,
                                           ),
                                         ),

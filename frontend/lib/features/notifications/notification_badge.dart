@@ -12,7 +12,7 @@ class NotificationBadge {
   static final List<NotificationData> notifications = [
     NotificationData(
       icon: Icons.check_circle_outline,
-      iconColor: const Color(0xFF4CAF50),
+      iconColor: const Color(0xFFF9A825),
       title: 'Report Status Updated',
       description:
           'Your report "Large pothole on Main Street" has been marked as In Progress',
@@ -21,7 +21,7 @@ class NotificationBadge {
     ),
     NotificationData(
       icon: Icons.chat_bubble_outline,
-      iconColor: const Color(0xFF90CAF9),
+      iconColor: const Color(0xFFFFCA28),
       title: 'New Comment',
       description: 'A government official commented on your report',
       time: '2h ago',
@@ -29,7 +29,7 @@ class NotificationBadge {
     ),
     NotificationData(
       icon: Icons.arrow_upward,
-      iconColor: const Color(0xFF4CAF50),
+      iconColor: const Color(0xFFF9A825),
       title: 'Report Upvoted',
       description: 'Your report received 5 new upvotes',
       time: '1d ago',
