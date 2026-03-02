@@ -8,3 +8,21 @@ class NotificationBadge {
 
   static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
 }
+
+class NotificationData {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String description;
+  final String time;
+  bool isUnread;
+
+  NotificationData({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.description,
+    required this.time,
+    this.isUnread = false,
+  });
+}
