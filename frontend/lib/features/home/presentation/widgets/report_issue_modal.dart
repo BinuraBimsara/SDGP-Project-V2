@@ -388,37 +388,20 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   // ── Header: New Report ──
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(color: _borderColor),
         ),
       ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'New Report',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: _isSubmitting ? null : _handleSubmit,
-            child: const Text(
-              'Submit',
-              style: TextStyle(
-                color: _accentGreen,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      child: const Text(
+        'New Report',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
