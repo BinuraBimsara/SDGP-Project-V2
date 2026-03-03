@@ -227,49 +227,15 @@ class _ComplaintCardState extends State<ComplaintCard>
             ),
             const SizedBox(height: 10),
 
-            // Image
+            // Image – Instagram-style dynamic aspect ratio
             if (widget.complaint.imageUrl.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    widget.complaint.imageUrl,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 180,
-                        color: isDark
-                            ? const Color(0xFF2A2A2A)
-                            : const Color(0xFFEEEEEE),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
-                            color: const Color(0xFFF9A825),
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 180,
-                      color: isDark
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFEEEEEE),
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          color: Colors.grey,
-                          size: 40,
-                        ),
-                      ),
-                    ),
+                  child: _DynamicAspectRatioImage(
+                    imageUrl: widget.complaint.imageUrl,
+                    isDark: isDark,
                   ),
                 ),
               ),
@@ -407,5 +373,134 @@ class _ComplaintCardState extends State<ComplaintCard>
       default:
         return const Color(0xFFEF5350);
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Instagram-style dynamic aspect ratio image
+// Resolves actual decoded image dimensions (EXIF rotation is applied by
+// Flutter's decoder) and clamps the aspect ratio to:
+//   • Portrait max : 4:5  (aspectRatio = 0.8)
+//   • Square       : 1:1  (aspectRatio = 1.0)
+//   • Landscape max: 1.91:1 (aspectRatio = 1.91)
+// ─────────────────────────────────────────────────────────────────────────────
+class _DynamicAspectRatioImage extends StatefulWidget {
+  final String imageUrl;
+  final bool isDark;
+
+  const _DynamicAspectRatioImage({
+    required this.imageUrl,
+    required this.isDark,
+  });
+
+  @override
+  State<_DynamicAspectRatioImage> createState() =>
+      _DynamicAspectRatioImageState();
+}
+
+class _DynamicAspectRatioImageState extends State<_DynamicAspectRatioImage> {
+  static const double _minAR = 4 / 5; // 0.8  – portrait
+  static const double _maxAR = 1.91; // 1.91 – landscape
+  // Start with landscape default so tall images shrink into place
+  // rather than expanding (feels more natural when scrolling).
+  double _aspectRatio = _maxAR;
+  ImageStream? _imageStream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveImageDimensions();
+  }
+
+  @override
+  void didUpdateWidget(_DynamicAspectRatioImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _removeListener();
+      _aspectRatio = _maxAR;
+      _resolveImageDimensions();
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeListener();
+    super.dispose();
+  }
+
+  void _removeListener() {
+    if (_imageStream != null && _listener != null) {
+      _imageStream!.removeListener(_listener!);
+    }
+  }
+
+  void _resolveImageDimensions() {
+    _imageStream =
+        NetworkImage(widget.imageUrl).resolve(ImageConfiguration.empty);
+    _listener = ImageStreamListener(
+      (ImageInfo info, bool _) {
+        if (!mounted) return;
+        final w = info.image.width.toDouble();
+        final h = info.image.height.toDouble();
+        if (w > 0 && h > 0) {
+          final raw = w / h;
+          setState(() {
+            _aspectRatio = raw.clamp(_minAR, _maxAR);
+          });
+        }
+        _removeListener();
+      },
+      onError: (exception, stackTrace) {
+        if (!mounted) return;
+        _removeListener();
+      },
+    );
+    _imageStream!.addListener(_listener!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholderColor =
+        widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      child: AspectRatio(
+        aspectRatio: _aspectRatio,
+        child: Image.network(
+          widget.imageUrl,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              color: placeholderColor,
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: const Color(0xFFF9A825),
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) => Container(
+            color: placeholderColor,
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: Colors.grey,
+                size: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -968,6 +968,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   }
 
   /// Builds the image section: carousel if multiple images, single if one.
+  /// Uses Instagram-style dynamic aspect ratio (4:5 to 1.91:1).
   Widget _buildImageSection(Color inputBg) {
     // Collect all image URLs, preferring imageUrls list over single imageUrl
     final List<String> urls = _complaint.imageUrls.isNotEmpty
@@ -976,27 +977,20 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
 
     if (urls.isEmpty) return const SizedBox.shrink();
 
-    // Single image — no carousel needed
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Single image — dynamic aspect ratio
     if (urls.length == 1) {
-      return Image.network(
-        urls.first,
-        height: 250,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          height: 250,
-          color: inputBg,
-          child: const Center(
-            child:
-                Icon(Icons.broken_image_outlined, color: Colors.grey, size: 50),
-          ),
-        ),
+      return _DetailDynamicImage(
+        imageUrl: urls.first,
+        isDark: isDark,
+        placeholderColor: inputBg,
       );
     }
 
-    // Multiple images — PageView carousel with indicators
-    return SizedBox(
-      height: 250,
+    // Multiple images — square carousel with indicators
+    return AspectRatio(
+      aspectRatio: 1.0, // square for carousel consistency
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
@@ -1006,11 +1000,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             itemBuilder: (context, index) {
               return Image.network(
                 urls[index],
-                height: 250,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  height: 250,
                   color: inputBg,
                   child: const Center(
                     child: Icon(Icons.broken_image_outlined,
@@ -1276,5 +1268,125 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       default:
         return const Color(0xFFEF5350);
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Instagram-style dynamic aspect ratio image for the detail page.
+// Same approach as the home feed: resolve decoded dimensions, clamp to
+// 4:5 (portrait) ↔ 1.91:1 (landscape).
+// ─────────────────────────────────────────────────────────────────────────────
+class _DetailDynamicImage extends StatefulWidget {
+  final String imageUrl;
+  final bool isDark;
+  final Color placeholderColor;
+
+  const _DetailDynamicImage({
+    required this.imageUrl,
+    required this.isDark,
+    required this.placeholderColor,
+  });
+
+  @override
+  State<_DetailDynamicImage> createState() => _DetailDynamicImageState();
+}
+
+class _DetailDynamicImageState extends State<_DetailDynamicImage> {
+  static const double _minAR = 4 / 5; // portrait
+  static const double _maxAR = 1.91; // landscape
+  double _aspectRatio = _maxAR;
+  ImageStream? _imageStream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_DetailDynamicImage old) {
+    super.didUpdateWidget(old);
+    if (old.imageUrl != widget.imageUrl) {
+      _cleanup();
+      _aspectRatio = _maxAR;
+      _resolve();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cleanup();
+    super.dispose();
+  }
+
+  void _cleanup() {
+    if (_imageStream != null && _listener != null) {
+      _imageStream!.removeListener(_listener!);
+    }
+  }
+
+  void _resolve() {
+    _imageStream =
+        NetworkImage(widget.imageUrl).resolve(ImageConfiguration.empty);
+    _listener = ImageStreamListener(
+      (ImageInfo info, bool _) {
+        if (!mounted) return;
+        final w = info.image.width.toDouble();
+        final h = info.image.height.toDouble();
+        if (w > 0 && h > 0) {
+          final raw = w / h;
+          setState(() => _aspectRatio = raw.clamp(_minAR, _maxAR));
+        }
+        _cleanup();
+      },
+      onError: (_, __) {
+        if (!mounted) return;
+        _cleanup();
+      },
+    );
+    _imageStream!.addListener(_listener!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      child: AspectRatio(
+        aspectRatio: _aspectRatio,
+        child: Image.network(
+          widget.imageUrl,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              color: widget.placeholderColor,
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: const Color(0xFFF9A825),
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) => Container(
+            color: widget.placeholderColor,
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: Colors.grey,
+                size: 50,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
