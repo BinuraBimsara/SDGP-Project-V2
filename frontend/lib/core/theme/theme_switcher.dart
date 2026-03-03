@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:spotit/main.dart';
 
-/// Wraps the app in a [RepaintBoundary] and provides a static
+/// Wraps the app in a [RepaintBoundary] + [Stack] and provides a static
 /// [switchTheme] method that performs a Telegram-style circular reveal
 /// animation for a smooth theme transition.
+///
+/// Uses a Stack-based overlay (not [Overlay]) so the screenshot layer
+/// lives in ThemeSwitcher's own widget tree and survives MaterialApp rebuilds.
 class ThemeSwitcher extends StatefulWidget {
   final Widget child;
   const ThemeSwitcher({super.key, required this.child});
@@ -31,10 +36,13 @@ class ThemeSwitcher extends StatefulWidget {
 class ThemeSwitcherState extends State<ThemeSwitcher>
     with SingleTickerProviderStateMixin {
   final GlobalKey _boundaryKey = GlobalKey();
-
-  OverlayEntry? _overlayEntry;
   late AnimationController _controller;
+
   bool _switching = false;
+  ui.Image? _screenshot;
+  Offset _tapPosition = Offset.zero;
+  bool _goingToDark = false;
+  Size _boundarySize = Size.zero;
 
   @override
   void initState() {
@@ -47,9 +55,8 @@ class ThemeSwitcherState extends State<ThemeSwitcher>
 
   @override
   void dispose() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
     _controller.dispose();
+    _screenshot?.dispose();
     super.dispose();
   }
 
@@ -81,89 +88,139 @@ class ThemeSwitcherState extends State<ThemeSwitcher>
       final pixelRatio = MediaQuery.of(context).devicePixelRatio;
       final image = await boundary.toImage(pixelRatio: pixelRatio);
 
-      // 2. Toggle the theme.
+      // 2. Determine direction before toggling.
       final isDark = SpotItApp.themeNotifier.value == ThemeMode.dark;
+
+      // 3. Place the screenshot on top via setState (Stack-based overlay).
+      setState(() {
+        _screenshot = image;
+        _tapPosition = tapPosition;
+        _goingToDark = !isDark;
+        _boundarySize = boundary.size;
+      });
+
+      // 4. Toggle the theme underneath.
       SpotItApp.themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
 
-      // 3. Calculate the max radius for the circular reveal.
-      final screenSize = MediaQuery.of(context).size;
-      final maxRadius = _calcMaxRadius(screenSize, tapPosition);
-
+      // 5. Reset animation.
       _controller.value = 0.0;
 
-      // 4. Show old-theme screenshot with a growing circular hole.
-      _overlayEntry = OverlayEntry(
-        builder: (_) => AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return ClipPath(
-              clipper: _CircularRevealClipper(
-                center: tapPosition,
-                radius: maxRadius * _controller.value,
-              ),
-              child: child,
-            );
-          },
-          child: SizedBox.expand(
-            child: IgnorePointer(
-              child: RawImage(
-                image: image,
-                fit: BoxFit.cover,
-                width: boundary.size.width,
-                height: boundary.size.height,
-              ),
-            ),
-          ),
-        ),
-      );
+      // 6. Wait one frame so the new theme paints under the screenshot.
+      final completer = Completer<void>();
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => completer.complete());
+      await completer.future;
 
-      // Insert after the current frame so the new theme is already painted.
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final overlay = Overlay.of(context, rootOverlay: true);
-        overlay.insert(_overlayEntry!);
+      // 7. Animate the circular reveal.
+      //    Forward  (→ dark):  old light screenshot has a GROWING hole
+      //                        → dark theme expands outward from icon.
+      //    Backward (→ light): old dark screenshot clipped to a SHRINKING circle
+      //                        → dark collapses toward the icon, light revealed.
+      await _controller.animateTo(1.0, curve: Curves.easeInOut);
 
-        // 5. Animate the circular reveal from 0 → maxRadius.
-        await _controller.animateTo(1.0, curve: Curves.easeInOut);
-
-        _overlayEntry?.remove();
-        _overlayEntry = null;
-        image.dispose();
-        _switching = false;
-      });
+      // 8. Clean up — remove screenshot after animation.
+      _cleanUpScreenshot();
+      _switching = false;
     } catch (_) {
       // If anything goes wrong, just toggle without animation.
+      _cleanUpScreenshot();
       _switching = false;
+    }
+  }
+
+  void _cleanUpScreenshot() {
+    final oldImage = _screenshot;
+    setState(() {
+      _screenshot = null;
+    });
+    // Dispose native image after the widget tree no longer references it.
+    if (oldImage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        oldImage.dispose();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      key: _boundaryKey,
-      child: widget.child,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Bottom layer: actual app content (new theme after toggle).
+        RepaintBoundary(
+          key: _boundaryKey,
+          child: widget.child,
+        ),
+        // Top layer: old-theme screenshot being clipped away.
+        if (_screenshot != null)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final maxRadius =
+                    _calcMaxRadius(_boundarySize, _tapPosition);
+                final progress = _controller.value;
+                return ClipPath(
+                  clipper: _goingToDark
+                      ? _CircularRevealClipper(
+                          center: _tapPosition,
+                          radius: maxRadius * progress,
+                          reverse: false,
+                        )
+                      : _CircularRevealClipper(
+                          center: _tapPosition,
+                          radius: maxRadius * (1.0 - progress),
+                          reverse: true,
+                        ),
+                  child: child,
+                );
+              },
+              child: IgnorePointer(
+                child: RawImage(
+                  image: _screenshot,
+                  fit: BoxFit.cover,
+                  width: _boundarySize.width,
+                  height: _boundarySize.height,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
-/// Custom clipper that creates a full-screen rectangle with a circular
-/// hole cut out. As [radius] grows, more of the old screenshot is removed,
-/// revealing the new theme underneath — a Telegram-style circular reveal.
+/// Custom clipper for the circular reveal animation.
+///
+/// [reverse] == false (forward / going to dark):
+///   Full-screen rect with a circular hole — hole grows, revealing the new theme.
+///
+/// [reverse] == true (backward / going to light):
+///   Just a circle clip — circle shrinks, collapsing the old dark screenshot
+///   toward the icon and revealing the light theme from the edges.
 class _CircularRevealClipper extends CustomClipper<Path> {
   final Offset center;
   final double radius;
+  final bool reverse;
 
   _CircularRevealClipper({
     required this.center,
     required this.radius,
+    required this.reverse,
   });
 
   @override
   Path getClip(Size size) {
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addOval(Rect.fromCircle(center: center, radius: radius))
-      ..fillType = PathFillType.evenOdd;
-    return path;
+    if (reverse) {
+      // Backward: old screenshot visible only inside the shrinking circle.
+      return Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+    } else {
+      // Forward: old screenshot visible everywhere EXCEPT the growing hole.
+      return Path()
+        ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+        ..addOval(Rect.fromCircle(center: center, radius: radius))
+        ..fillType = PathFillType.evenOdd;
+    }
   }
 
   @override
