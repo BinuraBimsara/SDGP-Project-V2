@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -9,10 +11,7 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:
-        '632998768428-th7r82as3l75umntvdh8qmgdt4vd4css.apps.googleusercontent.com',
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   /// The currently signed-in user, or null.
   User? get currentUser => _auth.currentUser;
@@ -24,24 +23,39 @@ class AuthService {
   /// Returns `null` if the user cancelled the sign-in flow.
   /// Throws on network or Firebase errors.
   Future<UserCredential?> signInWithGoogle() async {
-    // Trigger the Google Sign-In flow (account picker).
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        return await _auth.signInWithPopup(provider);
+      }
 
-    // User cancelled the picker.
-    if (googleUser == null) return null;
+      // Trigger the Google Sign-In flow (account picker).
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-    // Obtain the auth details from the request.
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+      // User cancelled the picker.
+      if (googleUser == null) return null;
 
-    // Create a new credential for Firebase.
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      // Obtain the auth details from the request.
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
-    // Sign in to Firebase with the Google credential.
-    return await _auth.signInWithCredential(credential);
+      // Create a new credential for Firebase.
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential.
+      return await _auth.signInWithCredential(credential);
+    } on PlatformException catch (e) {
+      if (e.code == 'sign_in_failed') {
+        throw Exception(
+          'Google sign-in failed. This is usually Firebase OAuth config '
+          'missing SHA-1/SHA-256 for Android.',
+        );
+      }
+      rethrow;
+    }
   }
   // ──────────────────── Official Sign-Up ────────────────
 
