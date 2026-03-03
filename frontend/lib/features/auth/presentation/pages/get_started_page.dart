@@ -53,19 +53,38 @@ class GetStartedPage extends StatelessWidget {
   // ─── Header ──────────────────────────────────────────────
 
   Widget _buildHeader() {
-    return const Column(
+    return Column(
       children: [
-        Text(
-          'SpotIT LK',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
-            letterSpacing: 0.5,
+        RichText(
+          text: TextSpan(
+            children: [
+              const TextSpan(
+                text: 'SpotIT',
+                style: TextStyle(
+                  fontSize: 38,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black87,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              WidgetSpan(
+                child: Transform.translate(
+                  offset: const Offset(2.0, -14.0),
+                  child: const Text(
+                    'LK',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _buttonAmber,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 4),
-        Text(
+        const SizedBox(height: 4),
+        const Text(
           'Report, Track, Solve',
           style: TextStyle(
             fontSize: 15,
