@@ -24,17 +24,21 @@ class _BlurredReportDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Center(
-        child: ConstrainedBox(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: Center(
+          child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: 420,
             maxHeight: MediaQuery.of(context).size.height * 0.90,
           ),
-          child: const Material(
-            color: Colors.transparent,
-            child: ReportIssueModal(),
+            child: const Material(
+              color: Colors.transparent,
+              child: ReportIssueModal(),
+            ),
           ),
         ),
       ),
