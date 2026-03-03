@@ -17,6 +17,101 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
+// -- Report constants -------------------------------------------------------
+const REPORT_CATEGORIES = ["Road", "Infrastructure", "Waste", "Other"];
+const REPORT_STATUSES = ["Pending", "In Progress", "Resolved"];
+const MAX_REPORT_IMAGES = 5;
+const MAX_REPORT_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function validateReportDraft(payload) {
+  const errors = [];
+
+  const title = (payload.title || "").trim();
+  if (!title) {
+    errors.push("Title is required.");
+  } else if (title.length < 5 || title.length > 120) {
+    errors.push("Title must be 5-120 characters.");
+  }
+
+  const description = (payload.description || "").trim();
+  if (!description) {
+    errors.push("Description is required.");
+  } else if (description.length < 10 || description.length > 1000) {
+    errors.push("Description must be 10-1000 characters.");
+  }
+
+  if (!REPORT_CATEGORIES.includes(payload.category)) {
+    errors.push("Category is not supported.");
+  }
+
+  if (!payload.authorId || String(payload.authorId).trim() === "") {
+    errors.push("Author ID is required.");
+  }
+
+  if (payload.locationName && payload.locationName.length > 120) {
+    errors.push("Location name is too long.");
+  }
+
+  const hasLat = payload.latitude !== undefined && payload.latitude !== null;
+  const hasLng = payload.longitude !== undefined && payload.longitude !== null;
+  if (hasLat !== hasLng) {
+    errors.push("Latitude and longitude must be provided together.");
+  } else if (hasLat && hasLng) {
+    const lat = Number(payload.latitude);
+    const lng = Number(payload.longitude);
+    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+      errors.push("Latitude must be -90 to 90.");
+    }
+    if (Number.isNaN(lng) || lng < -180 || lng > 180) {
+      errors.push("Longitude must be -180 to 180.");
+    }
+  }
+
+  if (payload.imageUrl) {
+    const imageUrl = String(payload.imageUrl);
+    if (!imageUrl.startsWith("http://") &&
+        !imageUrl.startsWith("https://")) {
+      errors.push("Image URL must be http/https.");
+    }
+  }
+
+  if (Array.isArray(payload.imageUrls)) {
+    if (payload.imageUrls.length > MAX_REPORT_IMAGES) {
+      errors.push("Max 5 images are allowed.");
+    }
+    payload.imageUrls.forEach((url) => {
+      const imageUrl = String(url || "");
+      if (!imageUrl.startsWith("http://") &&
+          !imageUrl.startsWith("https://")) {
+        errors.push("Image URL must be http/https.");
+      }
+    });
+  }
+
+  if (Array.isArray(payload.images)) {
+    if (payload.images.length > MAX_REPORT_IMAGES) {
+      errors.push("Max 5 images are allowed.");
+    }
+    payload.images.forEach((image) => {
+      const imageUrl = String((image || {}).url || "");
+      if (!imageUrl.startsWith("http://") &&
+          !imageUrl.startsWith("https://")) {
+        errors.push("Image URL must be http/https.");
+      }
+      if (image && image.sizeBytes !== undefined) {
+        const sizeBytes = Number(image.sizeBytes);
+        if (Number.isNaN(sizeBytes) || sizeBytes < 0) {
+          errors.push("Image size must be a positive number.");
+        } else if (sizeBytes > MAX_REPORT_IMAGE_BYTES) {
+          errors.push("Each image must be 10MB or less.");
+        }
+      }
+    });
+  }
+
+  return errors;
+}
+
 // -- Global options ----------------------------------------------------------
 setGlobalOptions({maxInstances: 10, region: "asia-south1"});
 
@@ -302,6 +397,57 @@ exports.addComment = onCall(async (request) => {
     commentId: commentDoc.id,
     authorName,
   };
+});
+
+// -- Create report (callable) -----------------------------------------------
+// Validates and creates a complaint document in Firestore.
+exports.createReport = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("You must be signed in to submit a report.");
+  }
+
+  const uid = request.auth.uid;
+  const payload = request.data || {};
+
+  const errors = validateReportDraft(payload);
+  if (errors.length > 0) {
+    throw new Error(errors.join(" "));
+  }
+
+  const latitude = payload.latitude !== undefined ?
+    Number(payload.latitude) : null;
+  const longitude = payload.longitude !== undefined ?
+    Number(payload.longitude) : null;
+
+  const report = {
+    title: payload.title.trim(),
+    description: payload.description.trim(),
+    category: payload.category,
+    status: REPORT_STATUSES.includes(payload.status) ?
+      payload.status : "Pending",
+    upvoteCount: 0,
+    commentCount: 0,
+    authorId: payload.authorId,
+    imageUrl: payload.imageUrl || "",
+    locationName: payload.locationName || "",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (latitude !== null && longitude !== null) {
+    report.latitude = latitude;
+    report.longitude = longitude;
+    report.position = {
+      geopoint: new admin.firestore.GeoPoint(latitude, longitude),
+    };
+  }
+
+  const docRef = await db.collection("complaints").add(report);
+
+  logger.info(
+      `Report ${docRef.id} created by ${uid}`,
+  );
+
+  return {id: docRef.id};
 });
 
 // -- Dashboard stats (callable, gov only) ------------------------------------

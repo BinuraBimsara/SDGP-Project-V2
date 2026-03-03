@@ -62,6 +62,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final List<XFile> _pickedImages = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'Pothole', 'icon': Icons.warning_amber_rounded},
@@ -119,6 +120,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Submit Handler ──
   Future<void> _handleSubmit() async {
+    setState(() => _errorMessage = null);
     // Basic validation
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
@@ -132,8 +134,16 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       _showError('Please select a category.');
       return;
     }
+    if (location.isEmpty) {
+      _showError('Please enter a location.');
+      return;
+    }
     if (description.isEmpty) {
       _showError('Please enter a description.');
+      return;
+    }
+    if (_pickedImages.isEmpty) {
+      _showError('Please add at least one photo.');
       return;
     }
 
@@ -185,13 +195,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    setState(() => _errorMessage = message);
   }
 
   // ── Colors ──
@@ -225,6 +229,38 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         children: [
           // ── Header ──
           _buildHeader(),
+
+          if (_errorMessage != null)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withAlpha(40),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           // ── Scrollable content ──
           Flexible(
