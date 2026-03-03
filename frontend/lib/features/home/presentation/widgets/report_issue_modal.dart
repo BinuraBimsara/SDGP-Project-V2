@@ -60,6 +60,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _scrollController = ScrollController();
 
   // ── State ──
   String? _selectedCategory;
@@ -79,6 +80,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
@@ -269,6 +271,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           // ── Scrollable content ──
           Flexible(
             child: SingleChildScrollView(
+              controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
