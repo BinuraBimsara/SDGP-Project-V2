@@ -106,7 +106,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             child: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               key: ValueKey(isDark),
-              color: isDark ? Colors.purple : Colors.blueGrey,
+              color: isDark ? const Color(0xFFF9A825) : Colors.blueGrey,
             ),
           ),
           onPressed: () {
