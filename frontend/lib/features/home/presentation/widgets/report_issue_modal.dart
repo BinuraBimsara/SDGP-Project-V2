@@ -80,7 +80,28 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _descriptionFocusNode.addListener(_onDescriptionFocusChange);
+  }
+
+  void _onDescriptionFocusChange() {
+    if (_descriptionFocusNode.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _descriptionFocusNode.removeListener(_onDescriptionFocusChange);
     _descriptionFocusNode.dispose();
     _scrollController.dispose();
     _titleController.dispose();
