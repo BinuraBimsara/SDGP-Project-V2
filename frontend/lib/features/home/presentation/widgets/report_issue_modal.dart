@@ -295,6 +295,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           Flexible(
             child: SingleChildScrollView(
               controller: _scrollController,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
