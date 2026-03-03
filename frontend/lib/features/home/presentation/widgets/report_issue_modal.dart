@@ -31,10 +31,10 @@ class _BlurredReportDialog extends StatelessWidget {
         padding: EdgeInsets.only(bottom: bottomInset),
         child: Center(
           child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 420,
-            maxHeight: MediaQuery.of(context).size.height * 0.90,
-          ),
+            constraints: BoxConstraints(
+              maxWidth: 420,
+              maxHeight: MediaQuery.of(context).size.height * 0.90,
+            ),
             child: const Material(
               color: Colors.transparent,
               child: ReportIssueModal(),
@@ -87,6 +87,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   void _onDescriptionFocusChange() {
     if (_descriptionFocusNode.hasFocus) {
+      // Wait for the keyboard to appear, then scroll to the bottom
       Future.delayed(const Duration(milliseconds: 400), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -618,10 +619,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: _hintColor,
-                  size: 22,
+                AnimatedRotation(
+                  turns: _isCategoryExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: _hintColor,
+                    size: 22,
+                  ),
                 ),
               ],
             ),
@@ -629,8 +634,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         ),
 
         // ── Expandable category list ──
-        if (_isCategoryExpanded)
-          Padding(
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Column(
               children: _categories.map((c) {
@@ -647,7 +653,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                         _isCategoryExpanded = false;
                       });
                     },
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
@@ -691,6 +698,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
               }).toList(),
             ),
           ),
+          crossFadeState: _isCategoryExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+        ),
       ],
     );
   }
