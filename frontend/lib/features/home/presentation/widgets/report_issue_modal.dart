@@ -71,7 +71,6 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   String? _errorMessage;
 
   static const List<Map<String, dynamic>> _categories = [
-    {'label': 'Pothole', 'icon': Icons.warning_amber_rounded},
     {'label': 'Road Damage', 'icon': Icons.remove_road},
     {'label': 'Infrastructure', 'icon': Icons.construction},
     {'label': 'Waste', 'icon': Icons.delete_outline},
