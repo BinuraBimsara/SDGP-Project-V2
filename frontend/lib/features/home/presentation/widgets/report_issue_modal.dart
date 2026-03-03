@@ -69,6 +69,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _isCategoryExpanded = false;
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'Road Damage', 'icon': Icons.remove_road},
@@ -573,65 +574,124 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 
-  // ── Category dropdown ──
+  // ── Category expandable dropdown ──
   Widget _buildCategoryDropdown() {
     final selectedCat = _categories.cast<Map<String, dynamic>?>().firstWhere(
           (c) => c!['label'] == _selectedCategory,
           orElse: () => null,
         );
 
-    return DropdownButtonFormField<String>(
-      initialValue: _selectedCategory,
-      dropdownColor: const Color(0xFF2A2A2A),
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _hintColor),
-      style: const TextStyle(color: _textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: _fieldFill,
-        prefixIcon: Icon(
-          selectedCat != null
-              ? selectedCat['icon'] as IconData
-              : Icons.category_outlined,
-          color: _accentGreen,
-          size: 20,
-        ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 48),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _accentGreen, width: 1.5),
-        ),
-      ),
-      hint: Text(
-        'Category',
-        style: TextStyle(color: _hintColor, fontSize: 14),
-      ),
-      items: _categories
-          .map(
-            (c) => DropdownMenuItem(
-              value: c['label'] as String,
-              child: Row(
-                children: [
-                  Icon(c['icon'] as IconData, color: _accentGreen, size: 18),
-                  const SizedBox(width: 10),
-                  Text(c['label'] as String),
-                ],
+    return Column(
+      children: [
+        // ── Tap target: shows selected category or placeholder ──
+        GestureDetector(
+          onTap: () =>
+              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _fieldFill,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isCategoryExpanded ? _accentGreen : _borderColor,
+                width: _isCategoryExpanded ? 1.5 : 1,
               ),
             ),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => _selectedCategory = value),
+            child: Row(
+              children: [
+                Icon(
+                  selectedCat != null
+                      ? selectedCat['icon'] as IconData
+                      : Icons.category_outlined,
+                  color: _accentGreen,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    selectedCat != null
+                        ? selectedCat['label'] as String
+                        : 'Select Category',
+                    style: TextStyle(
+                      color: selectedCat != null ? _textPrimary : _hintColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: _hintColor,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Expandable category list ──
+        if (_isCategoryExpanded)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              children: _categories.map((c) {
+                final label = c['label'] as String;
+                final icon = c['icon'] as IconData;
+                final isSelected = _selectedCategory == label;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = label;
+                        _isCategoryExpanded = false;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? _accentGreen.withAlpha(40)
+                            : _fieldFill,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? _accentGreen.withAlpha(120)
+                              : _borderColor,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icon, color: _accentGreen, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: isSelected ? _accentGreen : _textPrimary,
+                                fontSize: 14,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: _accentGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
     );
   }
 }
