@@ -101,10 +101,14 @@ class SpotItApp extends StatelessWidget {
             useMaterial3: true,
           ),
 
-          home: ThemeSwitcher(
-            key: ThemeSwitcher.instanceKey,
-            child: const AuthGate(),
-          ),
+          builder: (context, child) {
+            return ThemeSwitcher(
+              key: ThemeSwitcher.instanceKey,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+
+          home: const AuthGate(),
         );
       },
     );
