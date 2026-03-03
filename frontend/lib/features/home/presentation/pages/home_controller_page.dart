@@ -7,6 +7,7 @@ import 'package:spotit/features/notifications/notification_badge.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:spotit/features/profile/presentation/pages/profile_page.dart';
 import 'package:spotit/main.dart';
+import 'package:spotit/core/theme/theme_switcher.dart';
 
 class HomeControllerPage extends StatefulWidget {
   const HomeControllerPage({super.key});
@@ -20,6 +21,8 @@ class _HomeControllerPageState extends State<HomeControllerPage>
   int _currentNavIndex = 0;
   // Key that changes on every tab switch to force page rebuild
   Key _pageKey = UniqueKey();
+  // Key for the theme toggle button to calculate tap position
+  final GlobalKey _themeButtonKey = GlobalKey();
 
   void _switchTab(int index) {
     if (index != _currentNavIndex) {
@@ -89,8 +92,9 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       ),
       centerTitle: true,
       actions: [
-        // Animated sun/moon toggle
+        // Animated sun/moon toggle with circular reveal
         IconButton(
+          key: _themeButtonKey,
           icon: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             transitionBuilder: (child, animation) {
@@ -106,8 +110,14 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             ),
           ),
           onPressed: () {
-            final mode = isDark ? ThemeMode.light : ThemeMode.dark;
-            SpotItApp.themeNotifier.value = mode;
+            final box = _themeButtonKey.currentContext?.findRenderObject()
+                as RenderBox?;
+            if (box != null) {
+              final position = box.localToGlobal(
+                Offset(box.size.width / 2, box.size.height / 2),
+              );
+              ThemeSwitcher.switchTheme(context, position);
+            }
           },
         ),
       ],
