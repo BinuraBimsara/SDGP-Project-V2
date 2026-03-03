@@ -6,6 +6,7 @@ import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'package:spotit/features/complaints/data/repositories/firestore_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/core/theme/theme_switcher.dart';
 
 // ─── Repository Provider ─────────────────────────────────────────────────────
 
@@ -100,7 +101,10 @@ class SpotItApp extends StatelessWidget {
             useMaterial3: true,
           ),
 
-          home: const AuthGate(),
+          home: ThemeSwitcher(
+            key: ThemeSwitcher.instanceKey,
+            child: const AuthGate(),
+          ),
         );
       },
     );
