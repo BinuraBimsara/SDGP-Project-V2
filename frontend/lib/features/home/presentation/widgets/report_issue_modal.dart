@@ -24,17 +24,21 @@ class _BlurredReportDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 420,
-            maxHeight: MediaQuery.of(context).size.height * 0.90,
-          ),
-          child: const Material(
-            color: Colors.transparent,
-            child: ReportIssueModal(),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 420,
+              maxHeight: MediaQuery.of(context).size.height * 0.90,
+            ),
+            child: const Material(
+              color: Colors.transparent,
+              child: ReportIssueModal(),
+            ),
           ),
         ),
       ),
@@ -56,6 +60,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _descriptionFocusNode = FocusNode();
 
   // ── State ──
   String? _selectedCategory;
@@ -63,9 +69,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _isCategoryExpanded = false;
 
   static const List<Map<String, dynamic>> _categories = [
-    {'label': 'Pothole', 'icon': Icons.warning_amber_rounded},
     {'label': 'Road Damage', 'icon': Icons.remove_road},
     {'label': 'Infrastructure', 'icon': Icons.construction},
     {'label': 'Waste', 'icon': Icons.delete_outline},
@@ -74,7 +80,31 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _descriptionFocusNode.addListener(_onDescriptionFocusChange);
+  }
+
+  void _onDescriptionFocusChange() {
+    if (_descriptionFocusNode.hasFocus) {
+      // Wait for the keyboard to appear, then scroll to the bottom
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _descriptionFocusNode.removeListener(_onDescriptionFocusChange);
+    _descriptionFocusNode.dispose();
+    _scrollController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
@@ -179,7 +209,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report submitted successfully! 🎉'),
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: Color(0xFFF9A825),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -201,7 +231,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   // ── Colors ──
   static const _sheetBg = Color(0xFF141414);
   static const _fieldFill = Color(0xFF1E1E1E);
-  static const _accentGreen = Color(0xFF4CAF50);
+  static const _accentGreen = Color(0xFFF9A825);
   static const _borderColor = Color(0xFF2A2A2A);
   static const _textPrimary = Colors.white;
   static final _textSecondary = Colors.white.withAlpha(153);
@@ -265,12 +295,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           // ── Scrollable content ──
           Flexible(
             child: SingleChildScrollView(
+              controller: _scrollController,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Evidence Photos ──
-                  _sectionTitle('📷 Evidence Photos'),
+                  _sectionTitle('Evidence Photos'),
                   const SizedBox(height: 12),
                   _buildPhotoButtons(),
                   if (_pickedImages.isNotEmpty) ...[
@@ -280,7 +312,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   const SizedBox(height: 24),
 
                   // ── Report Details ──
-                  _sectionTitle('📋 Report Details'),
+                  _sectionTitle('Report Details'),
                   const SizedBox(height: 12),
 
                   // Title
@@ -317,6 +349,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                     prefixIcon: Icons.description_outlined,
                     maxLines: 4,
                     alignTop: true,
+                    focusNode: _descriptionFocusNode,
                   ),
                   const SizedBox(height: 24),
 
@@ -353,44 +386,23 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 
-  // ── Header: [X]  New Report  [Submit] ──
+  // ── Header: New Report ──
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(color: _borderColor),
         ),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.close, color: _textPrimary, size: 22),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Expanded(
-            child: Text(
-              'New Report',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: _isSubmitting ? null : _handleSubmit,
-            child: const Text(
-              'Submit',
-              style: TextStyle(
-                color: _accentGreen,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      child: const Text(
+        'New Report',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -523,8 +535,10 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     int maxLines = 1,
     Widget? suffixIcon,
     bool alignTop = false,
+    FocusNode? focusNode,
   }) {
     return TextFormField(
+      focusNode: focusNode,
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: _textPrimary, fontSize: 14),
@@ -561,65 +575,135 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 
-  // ── Category dropdown ──
+  // ── Category expandable dropdown ──
   Widget _buildCategoryDropdown() {
     final selectedCat = _categories.cast<Map<String, dynamic>?>().firstWhere(
           (c) => c!['label'] == _selectedCategory,
           orElse: () => null,
         );
 
-    return DropdownButtonFormField<String>(
-      initialValue: _selectedCategory,
-      dropdownColor: const Color(0xFF2A2A2A),
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _hintColor),
-      style: const TextStyle(color: _textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: _fieldFill,
-        prefixIcon: Icon(
-          selectedCat != null
-              ? selectedCat['icon'] as IconData
-              : Icons.category_outlined,
-          color: _accentGreen,
-          size: 20,
-        ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 48),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _accentGreen, width: 1.5),
-        ),
-      ),
-      hint: Text(
-        'Category',
-        style: TextStyle(color: _hintColor, fontSize: 14),
-      ),
-      items: _categories
-          .map(
-            (c) => DropdownMenuItem(
-              value: c['label'] as String,
-              child: Row(
-                children: [
-                  Icon(c['icon'] as IconData, color: _accentGreen, size: 18),
-                  const SizedBox(width: 10),
-                  Text(c['label'] as String),
-                ],
+    return Column(
+      children: [
+        // ── Tap target: shows selected category or placeholder ──
+        GestureDetector(
+          onTap: () =>
+              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _fieldFill,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isCategoryExpanded ? _accentGreen : _borderColor,
+                width: _isCategoryExpanded ? 1.5 : 1,
               ),
             ),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => _selectedCategory = value),
+            child: Row(
+              children: [
+                Icon(
+                  selectedCat != null
+                      ? selectedCat['icon'] as IconData
+                      : Icons.category_outlined,
+                  color: _accentGreen,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    selectedCat != null
+                        ? selectedCat['label'] as String
+                        : 'Select Category',
+                    style: TextStyle(
+                      color: selectedCat != null ? _textPrimary : _hintColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isCategoryExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: _hintColor,
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Expandable category list ──
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              children: _categories.map((c) {
+                final label = c['label'] as String;
+                final icon = c['icon'] as IconData;
+                final isSelected = _selectedCategory == label;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = label;
+                        _isCategoryExpanded = false;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? _accentGreen.withAlpha(40)
+                            : _fieldFill,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? _accentGreen.withAlpha(120)
+                              : _borderColor,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icon, color: _accentGreen, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: isSelected ? _accentGreen : _textPrimary,
+                                fontSize: 14,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: _accentGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          crossFadeState: _isCategoryExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+        ),
+      ],
     );
   }
 }
