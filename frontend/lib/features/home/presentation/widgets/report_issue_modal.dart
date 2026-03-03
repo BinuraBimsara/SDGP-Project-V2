@@ -301,7 +301,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Evidence Photos ──
-                  _sectionTitle('📷 Evidence Photos'),
+                  _sectionTitle('Evidence Photos'),
                   const SizedBox(height: 12),
                   _buildPhotoButtons(),
                   if (_pickedImages.isNotEmpty) ...[
@@ -311,7 +311,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   const SizedBox(height: 24),
 
                   // ── Report Details ──
-                  _sectionTitle('📋 Report Details'),
+                  _sectionTitle('Report Details'),
                   const SizedBox(height: 12),
 
                   // Title
