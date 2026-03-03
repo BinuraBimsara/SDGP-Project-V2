@@ -208,7 +208,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report submitted successfully! 🎉'),
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: Color(0xFFF9A825),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -230,7 +230,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   // ── Colors ──
   static const _sheetBg = Color(0xFF141414);
   static const _fieldFill = Color(0xFF1E1E1E);
-  static const _accentGreen = Color(0xFF4CAF50);
+  static const _accentGreen = Color(0xFFF9A825);
   static const _borderColor = Color(0xFF2A2A2A);
   static const _textPrimary = Colors.white;
   static final _textSecondary = Colors.white.withAlpha(153);
