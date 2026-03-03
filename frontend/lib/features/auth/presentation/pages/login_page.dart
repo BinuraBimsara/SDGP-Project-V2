@@ -257,13 +257,32 @@ class _LoginPageState extends State<LoginPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'SpotIT LK',
-            style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              color: Colors.black87,
-              letterSpacing: 0.5,
+          RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'SpotIT',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                WidgetSpan(
+                  child: Transform.translate(
+                    offset: const Offset(2.0, -18.0),
+                    child: const Text(
+                      'LK',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),

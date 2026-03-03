@@ -75,20 +75,26 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           },
         ),
       ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
-          const SizedBox(width: 6),
-          Text(
-            'SpotIT LK',
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-        ],
+      title: Image.asset(
+        'assets/images/home_logo.png',
+        height: 36,
+        errorBuilder: (context, error, stackTrace) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'SpotIT LK',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ],
+          );
+        },
       ),
       centerTitle: true,
       actions: [
@@ -141,10 +147,16 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.location_on,
-                  color: Color(0xFFF9A825),
-                  size: 32,
+                Image.asset(
+                  'assets/images/home_logo.png',
+                  height: 32,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.location_on,
+                      color: Color(0xFFF9A825),
+                      size: 32,
+                    );
+                  },
                 ),
                 const SizedBox(width: 12),
                 Text(
