@@ -61,6 +61,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _scrollController = ScrollController();
+  final _descriptionFocusNode = FocusNode();
 
   // ── State ──
   String? _selectedCategory;
@@ -80,6 +81,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   @override
   void dispose() {
+    _descriptionFocusNode.dispose();
     _scrollController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
@@ -324,6 +326,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                     prefixIcon: Icons.description_outlined,
                     maxLines: 4,
                     alignTop: true,
+                    focusNode: _descriptionFocusNode,
                   ),
                   const SizedBox(height: 24),
 
@@ -530,8 +533,10 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     int maxLines = 1,
     Widget? suffixIcon,
     bool alignTop = false,
+    FocusNode? focusNode,
   }) {
     return TextFormField(
+      focusNode: focusNode,
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: _textPrimary, fontSize: 14),
