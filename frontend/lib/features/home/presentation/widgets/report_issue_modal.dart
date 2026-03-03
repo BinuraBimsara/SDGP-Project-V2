@@ -385,7 +385,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 
-  // ── Header: [X]  New Report  [Submit] ──
+  // ── Header: New Report ──
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
@@ -396,10 +396,6 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.close, color: _textPrimary, size: 22),
-            onPressed: () => Navigator.pop(context),
-          ),
           const Expanded(
             child: Text(
               'New Report',
