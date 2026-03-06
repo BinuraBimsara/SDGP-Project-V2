@@ -43,14 +43,21 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     try {
       final filter = (_selectedFilter == 'All') ? null : _selectedFilter;
 
-      // Simulate fetching current user location (Colombo fallback if missing)
-      final locationService = LocationService();
-      final position = await locationService.determinePosition();
+      // Best-effort location: silently fall back to Colombo if GPS unavailable.
+      double userLat = 6.9271;
+      double userLng = 79.8612;
+      try {
+        final position = await LocationService.getCurrentPosition();
+        userLat = position.latitude;
+        userLng = position.longitude;
+      } on LocationServiceException {
+        // Permission denied or service off — use fallback coords.
+      }
 
       final complaints = await _repository.getComplaints(
         category: filter,
-        userLat: position.latitude,
-        userLng: position.longitude,
+        userLat: userLat,
+        userLng: userLng,
       );
 
       setState(() {
