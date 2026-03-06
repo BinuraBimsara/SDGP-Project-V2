@@ -164,8 +164,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         ? LatLng(_latitude!, _longitude!)
         : const LatLng(6.9271, 79.8612); // Default: Colombo, LK
 
-    final result = await Navigator.push<LocationPickerResult>(
-      context,
+    final result = await Navigator.of(context, rootNavigator: true)
+        .push<LocationPickerResult>(
       MaterialPageRoute(
         builder: (_) => LocationPickerScreen(initialLatLng: initial),
       ),

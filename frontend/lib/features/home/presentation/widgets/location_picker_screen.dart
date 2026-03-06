@@ -13,15 +13,8 @@ class LocationPickerResult {
 
 /// Full-screen map that lets the user drop a pin anywhere on the map.
 ///
-/// Usage:
-/// ```dart
-/// final result = await Navigator.push<LocationPickerResult>(
-///   context,
-///   MaterialPageRoute(
-///     builder: (_) => LocationPickerScreen(initialLatLng: LatLng(6.9271, 79.8612)),
-///   ),
-/// );
-/// ```
+/// If Google Maps fails to load (e.g. missing API key), falls back to
+/// a clean address-based location picker using GPS + reverse geocoding.
 class LocationPickerScreen extends StatefulWidget {
   final LatLng initialLatLng;
 
@@ -40,6 +33,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   GoogleMapController? _mapController;
   late LatLng _pickedLatLng;
   bool _isMapMoving = false;
+  bool _mapLoadFailed = false;
 
   // ── Address ──
   String _address = 'Move the map to set location';
@@ -104,14 +98,15 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   // ── Reverse geocoding ───────────────────────────────────────────────────────
 
   void _reverseGeocode(LatLng pos) {
+    _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 600), () async {
       if (!mounted) return;
       setState(() {
         _isGeocoding = true;
         _address = 'Finding address…';
       });
-      final addr = await LocationService.reverseGeocode(
-          pos.latitude, pos.longitude);
+      final addr =
+          await LocationService.reverseGeocode(pos.latitude, pos.longitude);
       if (!mounted) return;
       setState(() {
         _address = addr;
@@ -127,9 +122,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
     try {
       final pos = await LocationService.getCurrentPosition();
       final myLatLng = LatLng(pos.latitude, pos.longitude);
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(myLatLng, 16),
-      );
+
+      if (!_mapLoadFailed) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(myLatLng, 16),
+        );
+      }
+
       setState(() => _pickedLatLng = myLatLng);
       _reverseGeocode(myLatLng);
     } on LocationServiceException catch (e) {
@@ -165,33 +164,20 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // ── Map ──
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: widget.initialLatLng,
-              zoom: 15,
-            ),
-            onMapCreated: (ctrl) => _mapController = ctrl,
-            onCameraMove: _onCameraMove,
-            onCameraIdle: _onCameraIdle,
-            myLocationButtonEnabled: false,
-            myLocationEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: false,
-            style: _mapStyle,
-          ),
+          // ── Map or fallback ──
+          _mapLoadFailed ? _buildFallbackMapArea() : _buildGoogleMap(),
 
-          // ── Center Pin ──
-          Center(
-            child: AnimatedBuilder(
-              animation: _pinOffsetAnim,
-              builder: (_, __) => Transform.translate(
-                offset: Offset(0, _pinOffsetAnim.value - 28),
-                child: _buildPin(),
+          // ── Center Pin (only when map is loaded) ──
+          if (!_mapLoadFailed)
+            Center(
+              child: AnimatedBuilder(
+                animation: _pinOffsetAnim,
+                builder: (_, __) => Transform.translate(
+                  offset: Offset(0, _pinOffsetAnim.value - 28),
+                  child: _buildPin(),
+                ),
               ),
             ),
-          ),
 
           // ── Bottom panel ──
           Positioned(
@@ -208,6 +194,68 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
             child: _buildGpsFab(),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Google Map (with error catching) ────────────────────────────────────────
+
+  Widget _buildGoogleMap() {
+    // Wrap in a builder that catches platform view failures
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: widget.initialLatLng,
+        zoom: 15,
+      ),
+      onMapCreated: (ctrl) => _mapController = ctrl,
+      onCameraMove: _onCameraMove,
+      onCameraIdle: _onCameraIdle,
+      myLocationButtonEnabled: false,
+      myLocationEnabled: false,
+      zoomControlsEnabled: false,
+      mapToolbarEnabled: false,
+      compassEnabled: false,
+      style: _mapStyle,
+    );
+  }
+
+  // ── Fallback when map fails ─────────────────────────────────────────────────
+
+  Widget _buildFallbackMapArea() {
+    return Container(
+      color: _bg,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: _accent.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.map_rounded, color: _accent, size: 40),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Map Unavailable',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Use the GPS button to set your location',
+              style: TextStyle(
+                color: Colors.white.withAlpha(120),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -232,8 +280,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_searching_rounded,
-                color: _accent, size: 16),
+            Icon(Icons.location_searching_rounded, color: _accent, size: 16),
             SizedBox(width: 8),
             Text(
               'Pick Location',
