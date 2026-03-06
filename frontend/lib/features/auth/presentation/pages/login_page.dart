@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart';
 
 /// Roles supported by the login page.
 enum UserRole { citizen, official }
@@ -66,32 +67,14 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Official email/password sign-in → navigate to home.
+  /// Official email/password sign-in → navigate to gov dashboard.
+  /// DEV BYPASS: Skips auth validation and goes straight to gov dashboard.
   Future<void> _handleOfficialSignIn() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    try {
-      await AuthService().signInOfficial(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign-in failed: ${e.toString()}'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const GovHomeControllerPage()),
+    );
   }
 
   // ─── Build ───────────────────────────────────────────────
@@ -403,7 +386,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // ─── Official Section (email/password) ────────────────────
+  // ─── Official Section (dev bypass - direct login) ──────
 
   Widget _buildOfficialSection() {
     return Column(
@@ -411,21 +394,7 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildOfficialInfoBanner(),
-        const SizedBox(height: 16),
-
-        // ── Email Field ──
-        _buildLabel('Email'),
-        const SizedBox(height: 6),
-        _buildEmailField(),
-        const SizedBox(height: 14),
-
-        // ── Password Field ──
-        _buildLabel('Password'),
-        const SizedBox(height: 6),
-        _buildPasswordField(),
-        const SizedBox(height: 22),
-
-        // ── Sign In Button ──
+        const SizedBox(height: 20),
         _buildSignInButton(),
         const SizedBox(height: 16),
         _buildSignUpLink(),
@@ -527,7 +496,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Government officials must log in with their official email credentials.',
+              'Dev mode: Click Login to access the Government Dashboard directly.',
               style: TextStyle(
                 fontSize: 12.5,
                 color: Colors.orange[900],
