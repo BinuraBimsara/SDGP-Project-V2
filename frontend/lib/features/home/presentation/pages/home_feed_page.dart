@@ -94,6 +94,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   }
 
   Future<void> _loadComplaints() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final filter = (_selectedFilter == 'All') ? null : _selectedFilter;
@@ -104,13 +105,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
         userLng: _userLng,
       );
 
+      if (!mounted) return;
       setState(() {
         _complaints = complaints;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Error loading complaints: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
