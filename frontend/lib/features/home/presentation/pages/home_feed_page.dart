@@ -1,10 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:spotit/core/services/location_service.dart';
 import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
 import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
+import 'package:spotit/features/home/presentation/widgets/location_picker_screen.dart';
 import 'package:spotit/main.dart';
 
 class HomeFeedPage extends StatefulWidget {
@@ -20,6 +22,12 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   bool _isLoading = true;
   late ComplaintRepository _repository;
 
+  // ── User location state ──
+  String _locationName = 'Detecting…';
+  double _userLat = 6.9271;
+  double _userLng = 79.8612;
+  bool _locationFetched = false;
+
   final List<String> _filters = [
     'All',
     'Waste',
@@ -34,6 +42,53 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     _repository = RepositoryProvider.of(context);
     if (_isLoading) {
       _selectedFilter = 'All';
+      _initLocation();
+    }
+  }
+
+  /// Auto-detect user location once on startup.
+  Future<void> _initLocation() async {
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      _userLat = pos.latitude;
+      _userLng = pos.longitude;
+      _locationFetched = true;
+      final address =
+          await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+      if (mounted) {
+        setState(() => _locationName = _shortenAddress(address));
+      }
+    } on LocationServiceException {
+      if (mounted) setState(() => _locationName = 'Colombo');
+    }
+    _loadComplaints();
+  }
+
+  /// Shorten a long address to just the locality portion for the chip.
+  String _shortenAddress(String address) {
+    // Take at most the first two parts (e.g. "Galle Road, Colombo")
+    final parts = address.split(', ');
+    if (parts.length > 2) return parts.sublist(parts.length - 2).join(', ');
+    return address;
+  }
+
+  /// Opens the map picker to manually change the feed location.
+  Future<void> _changeLocation() async {
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(
+          initialLatLng: LatLng(_userLat, _userLng),
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _userLat = result.latLng.latitude;
+        _userLng = result.latLng.longitude;
+        _locationName = _shortenAddress(result.address);
+        _locationFetched = true;
+      });
       _loadComplaints();
     }
   }
@@ -43,21 +98,10 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     try {
       final filter = (_selectedFilter == 'All') ? null : _selectedFilter;
 
-      // Best-effort location: silently fall back to Colombo if GPS unavailable.
-      double userLat = 6.9271;
-      double userLng = 79.8612;
-      try {
-        final position = await LocationService.getCurrentPosition();
-        userLat = position.latitude;
-        userLng = position.longitude;
-      } on LocationServiceException {
-        // Permission denied or service off — use fallback coords.
-      }
-
       final complaints = await _repository.getComplaints(
         category: filter,
-        userLat: userLat,
-        userLng: userLng,
+        userLat: _userLat,
+        userLng: _userLng,
       );
 
       setState(() {
@@ -197,9 +241,10 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
 
           // Location Button
           GestureDetector(
-            onTap: _showLocationMockupDialog,
+            onTap: _changeLocation,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              constraints: const BoxConstraints(maxWidth: 180),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -213,17 +258,22 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.location_on,
-                    color: isDark ? Colors.white70 : Colors.black54,
+                    _locationFetched
+                        ? Icons.location_on
+                        : Icons.location_searching_rounded,
+                    color: const Color(0xFFF9A825),
                     size: 16,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    'Colombo',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
+                  Flexible(
+                    child: Text(
+                      _locationName,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -412,159 +462,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     );
   }
 
-  void _showLocationMockupDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    _showBlurredDialog(
-      Material(
-        color: Colors.transparent,
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.85,
-          constraints: const BoxConstraints(maxWidth: 380),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withAlpha(20)
-                  : Colors.black.withAlpha(15),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(80),
-                blurRadius: 30,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Header ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.map_rounded,
-                      color: Color(0xFFF9A825),
-                      size: 28,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Change Location',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ── Map Mock ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF2A2A2A)
-                        : const Color(0xFFEEEEEE),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.location_on,
-                            color: Color(0xFFEF5350), size: 40),
-                        SizedBox(height: 8),
-                        Text(
-                          'Google Maps Mock UI Component',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Drag the pin to set your current location for the feed.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.grey,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // ── Actions ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          foregroundColor:
-                              isDark ? Colors.white54 : Colors.black45,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  const Text('Location updated successfully!'),
-                              backgroundColor: const Color(0xFFF9A825),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF9A825),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // _showLocationMockupDialog removed — replaced by _changeLocation above.
 
   Widget _buildFeed() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
