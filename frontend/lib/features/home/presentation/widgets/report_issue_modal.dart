@@ -2,9 +2,12 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:spotit/core/services/location_service.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
+import 'package:spotit/features/home/presentation/widgets/location_picker_screen.dart';
 import 'package:spotit/main.dart';
 
 // ─── Helper: show the modal ─────────────────────────────────────────────────
@@ -70,6 +73,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   bool _isSubmitting = false;
   String? _errorMessage;
   bool _isCategoryExpanded = false;
+
+  // ── Geotag state ──
+  double? _latitude;
+  double? _longitude;
+  bool _isFetchingLocation = false;
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'Road Damage', 'icon': Icons.remove_road},
@@ -148,6 +156,51 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     setState(() => _pickedImages.removeAt(index));
   }
 
+  // ── Location helpers ──
+
+  /// Opens the full-screen map picker and stores the result.
+  Future<void> _openLocationPicker() async {
+    final initial = _latitude != null && _longitude != null
+        ? LatLng(_latitude!, _longitude!)
+        : const LatLng(6.9271, 79.8612); // Default: Colombo, LK
+
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLatLng: initial),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _latitude = result.latLng.latitude;
+        _longitude = result.latLng.longitude;
+        _locationController.text = result.address;
+      });
+    }
+  }
+
+  /// Fetches the device's current GPS location and reverse geocodes it.
+  Future<void> _fetchCurrentLocation() async {
+    setState(() => _isFetchingLocation = true);
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      final address =
+          await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+      if (!mounted) return;
+      setState(() {
+        _latitude = pos.latitude;
+        _longitude = pos.longitude;
+        _locationController.text = address;
+      });
+    } on LocationServiceException catch (e) {
+      if (!mounted) return;
+      _showError(e.message);
+    } finally {
+      if (mounted) setState(() => _isFetchingLocation = false);
+    }
+  }
+
   // ── Submit Handler ──
   Future<void> _handleSubmit() async {
     setState(() => _errorMessage = null);
@@ -198,6 +251,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         authorId: user.uid,
         authorName: user.displayName ?? user.email ?? 'Anonymous',
         locationName: location,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       final repo = RepositoryProvider.of(context);
@@ -328,18 +383,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   const SizedBox(height: 12),
 
                   // Location
-                  _buildTextField(
-                    controller: _locationController,
-                    hint: 'Location',
-                    prefixIcon: Icons.location_on_outlined,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.my_location,
-                          color: _accentGreen, size: 20),
-                      onPressed: () {
-                        // TODO: integrate geolocator to auto‑fill location
-                      },
-                    ),
-                  ),
+                  _buildLocationField(),
                   const SizedBox(height: 12),
 
                   // Description
@@ -572,6 +616,90 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           borderSide: const BorderSide(color: _accentGreen, width: 1.5),
         ),
       ),
+    );
+  }
+
+  // ── Premium Location field ──
+  Widget _buildLocationField() {
+    final hasCoords = _latitude != null && _longitude != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tappable field that opens the map picker
+        GestureDetector(
+          onTap: _openLocationPicker,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _fieldFill,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasCoords ? _accentGreen.withAlpha(100) : _borderColor,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  hasCoords
+                      ? Icons.location_on_rounded
+                      : Icons.location_on_outlined,
+                  color: _accentGreen,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _locationController.text.isEmpty
+                      ? Text(
+                          'Tap to pick location on map',
+                          style: TextStyle(color: _hintColor, fontSize: 14),
+                        )
+                      : Text(
+                          _locationController.text,
+                          style:
+                              const TextStyle(color: _textPrimary, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                ),
+                const SizedBox(width: 8),
+                // GPS quick-fill button
+                GestureDetector(
+                  onTap: _isFetchingLocation ? null : _fetchCurrentLocation,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _accentGreen.withAlpha(20),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: _isFetchingLocation
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                color: _accentGreen, strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location_rounded,
+                            color: _accentGreen, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Show coords chip when we have a pin location
+        if (hasCoords)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text(
+              '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}',
+              style: TextStyle(
+                color: Colors.white.withAlpha(60),
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+      ],
     );
   }
 
