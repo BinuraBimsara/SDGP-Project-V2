@@ -44,6 +44,8 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
   }
 
   Future<void> _handleLogout() async {
+    // Close the drawer first so the modal route doesn't block navigation
+    Navigator.pop(context);
     await AuthService().signOut();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -196,7 +198,8 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
                 color: Colors.redAccent.withAlpha(13),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+              child:
+                  const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             ),
             title: Text(
               'Sign Out',
