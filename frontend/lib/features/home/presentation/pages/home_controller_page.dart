@@ -6,7 +6,6 @@ import 'package:spotit/features/home/presentation/widgets/report_issue_modal.dar
 import 'package:spotit/features/notifications/notification_badge.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:spotit/features/profile/presentation/pages/profile_page.dart';
-import 'package:spotit/main.dart';
 import 'package:spotit/core/theme/theme_switcher.dart';
 
 class HomeControllerPage extends StatefulWidget {
