@@ -156,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Profile',
                     style: TextStyle(
                       color: accent,
@@ -166,11 +166,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   GestureDetector(
                     onTap: _signOut,
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.logout_rounded, color: accent, size: 18),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Logout',
                           style: TextStyle(
@@ -288,7 +288,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.person_outline_rounded,
+                        const Icon(Icons.person_outline_rounded,
                             color: accent, size: 14),
                         const SizedBox(width: 4),
                         Text(
@@ -500,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           if (onTap != null) ...[
             const SizedBox(height: 6),
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
@@ -511,7 +511,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 2),
+                SizedBox(width: 2),
                 Icon(Icons.arrow_forward_ios_rounded,
                     size: 10, color: accent),
               ],

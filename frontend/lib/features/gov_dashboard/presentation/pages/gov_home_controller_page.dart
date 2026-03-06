@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
-
-import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
-import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
-import 'package:spotit/features/home/presentation/widgets/report_issue_modal.dart';
+import 'package:spotit/features/auth/data/services/auth_service.dart';
+import 'package:spotit/features/auth/presentation/pages/login_page.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_dashboard_page.dart';
 import 'package:spotit/features/notifications/notification_badge.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:spotit/features/profile/presentation/pages/profile_page.dart';
 import 'package:spotit/core/theme/theme_switcher.dart';
 
-class HomeControllerPage extends StatefulWidget {
-  const HomeControllerPage({super.key});
+/// The main shell for the government official view.
+/// Contains the appbar, bottom navigation, and page switching.
+class GovHomeControllerPage extends StatefulWidget {
+  const GovHomeControllerPage({super.key});
 
   @override
-  State<HomeControllerPage> createState() => _HomeControllerPageState();
+  State<GovHomeControllerPage> createState() => _GovHomeControllerPageState();
 }
 
-class _HomeControllerPageState extends State<HomeControllerPage>
-    with SingleTickerProviderStateMixin {
+class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
   int _currentNavIndex = 0;
-  // Key that changes on every tab switch to force page rebuild
   Key _pageKey = UniqueKey();
-  // Key for the theme toggle button to calculate tap position
   final GlobalKey _themeButtonKey = GlobalKey();
 
   void _switchTab(int index) {
@@ -35,16 +33,24 @@ class _HomeControllerPageState extends State<HomeControllerPage>
   Widget _currentPage() {
     switch (_currentNavIndex) {
       case 0:
-        return HomeFeedPage(key: _pageKey);
+        return GovDashboardPage(key: _pageKey);
       case 1:
         return NotificationsPage(key: _pageKey);
       case 2:
-        return MyReportsPage(key: _pageKey);
-      case 3:
         return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
       default:
-        return HomeFeedPage(key: _pageKey);
+        return GovDashboardPage(key: _pageKey);
     }
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService().signOut();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   @override
@@ -74,30 +80,23 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           },
         ),
       ),
-      title: Image.asset(
-        'assets/images/home_logo.png',
-        height: 36,
-        errorBuilder: (context, error, stackTrace) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
-              const SizedBox(width: 6),
-              Text(
-                'SpotIT LK',
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ],
-          );
-        },
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.shield, color: Color(0xFFF9A825), size: 22),
+          const SizedBox(width: 8),
+          Text(
+            'SpotIT Official',
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+        ],
       ),
       centerTitle: true,
       actions: [
-        // Animated sun/moon toggle with circular reveal
         IconButton(
           key: _themeButtonKey,
           icon: AnimatedSwitcher(
@@ -146,23 +145,13 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             ),
             child: Row(
               children: [
-                Image.asset(
-                  'assets/images/home_logo.png',
-                  height: 32,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.location_on,
-                      color: Color(0xFFF9A825),
-                      size: 32,
-                    );
-                  },
-                ),
+                const Icon(Icons.shield, color: Color(0xFFF9A825), size: 32),
                 const SizedBox(width: 12),
                 Text(
-                  'Menu',
+                  'Official Menu',
                   style: TextStyle(
                     color: textColor,
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -175,40 +164,56 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             ),
           ),
           _buildDrawerItem(
+            Icons.dashboard_outlined,
+            'Dashboard',
+            'View all reports',
+            textColor,
+            onTap: () {
+              Navigator.pop(context);
+              _switchTab(0);
+            },
+          ),
+          _buildDrawerItem(
             Icons.info_outline_rounded,
             'About',
             'Learn more about SpotIT',
             textColor,
-            onTap: () {},
+            onTap: () => Navigator.pop(context),
           ),
           _buildDrawerItem(
             Icons.help_outline_rounded,
             'Help & Feedback',
             'Get help or send feedback',
             textColor,
-            onTap: () {},
-          ),
-          _buildDrawerItem(
-            Icons.star_outline_rounded,
-            'Rate the App',
-            'Share your experience',
-            textColor,
-            onTap: () {},
-          ),
-          _buildDrawerItem(
-            Icons.mail_outline_rounded,
-            'Contact',
-            'Get in touch with us',
-            textColor,
-            onTap: () {},
+            onTap: () => Navigator.pop(context),
           ),
           const Spacer(),
+          // Logout
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withAlpha(13),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            ),
+            title: Text(
+              'Sign Out',
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+            onTap: _handleLogout,
+          ),
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
                 Text(
-                  'SpotIT v1.0 • Report, Track, Solve',
+                  'SpotIT Official v1.0',
                   style: TextStyle(
                     color: textColor.withAlpha(128),
                     fontSize: 12,
@@ -258,9 +263,6 @@ class _HomeControllerPageState extends State<HomeControllerPage>
         subtitle,
         style: TextStyle(color: textColor.withAlpha(153), fontSize: 12),
       ),
-      trailing: title == 'About'
-          ? Icon(Icons.open_in_new, size: 16, color: textColor.withAlpha(102))
-          : null,
       onTap: onTap,
     );
   }
@@ -284,7 +286,11 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
+              _buildNavItem(
+                icon: Icons.dashboard_rounded,
+                label: 'Dashboard',
+                index: 0,
+              ),
               ValueListenableBuilder<int>(
                 valueListenable: NotificationBadge.unreadCount,
                 builder: (context, count, child) {
@@ -296,39 +302,10 @@ class _HomeControllerPageState extends State<HomeControllerPage>
                   );
                 },
               ),
-              // Center Report button
-              GestureDetector(
-                onTap: () => showReportIssueModal(context),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9A825),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFF9A825).withAlpha(77),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.add_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-              ),
-              _buildNavItem(
-                icon: Icons.article_outlined,
-                label: 'Report',
-                index: 2,
-              ),
               _buildNavItem(
                 icon: Icons.person_outline_rounded,
                 label: 'Profile',
-                index: 3,
+                index: 2,
               ),
             ],
           ),
@@ -351,7 +328,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 56,
+        width: 72,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
