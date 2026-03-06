@@ -23,6 +23,8 @@ dependencies:
   cloud_functions: ^5.3.4
   google_sign_in: ^6.3.0
   google_maps_flutter: ^2.14.2
+  geolocator: ^13.0.0
+  geocoding: ^3.0.0
   http: ^1.2.0
   backend:
     path: ../backend
