@@ -8,6 +8,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Read MAPS_API_KEY from local.properties (git-ignored)
+val localPropsFile = rootProject.file("local.properties")
+val localProps = java.util.Properties()
+if (localPropsFile.exists()) {
+    localPropsFile.reader().use { localProps.load(it) }
+}
+val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
+
 android {
     namespace = "com.example.spotit"
     compileSdk = flutter.compileSdkVersion
@@ -32,13 +40,6 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Read MAPS_API_KEY from local.properties
-        val localProperties = java.util.Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localPropertiesFile.inputStream().use { localProperties.load(it) }
-        }
-        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
