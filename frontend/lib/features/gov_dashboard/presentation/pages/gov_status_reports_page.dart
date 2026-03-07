@@ -37,8 +37,6 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
     'Highest Priority',
     'Lowest Priority',
     'Latest',
-    'Most Upvoted',
-    'Most Downvoted',
   ];
 
   static const List<Map<String, dynamic>> _categories = [
@@ -89,11 +87,9 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
   void _sortComplaints() {
     switch (_sortMode) {
       case 'Highest Priority':
-      case 'Most Upvoted':
         _complaints.sort((a, b) => b.upvoteCount.compareTo(a.upvoteCount));
         break;
       case 'Lowest Priority':
-      case 'Most Downvoted':
         _complaints.sort((a, b) => a.upvoteCount.compareTo(b.upvoteCount));
         break;
       case 'Latest':
