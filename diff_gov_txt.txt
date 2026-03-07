@@ -1,0 +1,23 @@
+diff --git a/frontend/lib/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart b/frontend/lib/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart
+index c18fc36..809154b 100644
+--- a/frontend/lib/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart
++++ b/frontend/lib/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart
+@@ -44,6 +44,8 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
+   }
+ 
+   Future<void> _handleLogout() async {
++    // Close the drawer first so the modal route doesn't block navigation
++    Navigator.pop(context);
+     await AuthService().signOut();
+     if (!mounted) return;
+     Navigator.pushAndRemoveUntil(
+@@ -196,7 +198,8 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
+                 color: Colors.redAccent.withAlpha(13),
+                 borderRadius: BorderRadius.circular(8),
+               ),
+-              child: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
++              child:
++                  const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+             ),
+             title: Text(
+               'Sign Out',

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/firebase_options.dart';
-import 'package:spotit/features/auth/presentation/pages/login_page.dart';
-import 'package:spotit/features/complaints/data/repositories/dummy_complaint_repository.dart';
+import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
+import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
+import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
+import 'package:spotit/features/complaints/data/repositories/firestore_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/core/theme/theme_switcher.dart';
 
 // ─── Repository Provider ─────────────────────────────────────────────────────
 
@@ -36,9 +41,15 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Enable Firestore offline persistence for instant data loading
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
   runApp(
     RepositoryProvider(
-      repository: DummyComplaintRepository(),
+      repository: FirestoreComplaintRepository(),
       child: const SpotItApp(),
     ),
   );
@@ -61,6 +72,8 @@ class SpotItApp extends StatelessWidget {
           title: 'SpotIT LK',
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 500),
+          themeAnimationCurve: Curves.easeInOut,
 
           // ── Light Theme ──
           theme: ThemeData(
@@ -96,8 +109,81 @@ class SpotItApp extends StatelessWidget {
             useMaterial3: true,
           ),
 
-          home: const LoginPage(),
+          builder: (context, child) {
+            return ThemeSwitcher(
+              key: ThemeSwitcher.instanceKey,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+
+          home: const AuthGate(),
         );
+      },
+    );
+  }
+}
+
+// ─── Auth Gate ───────────────────────────────────────────────────────────────
+
+/// Listens to Firebase Auth state and routes accordingly:
+/// - Not signed in → [GetStartedPage]
+/// - Signed in but profile incomplete → [CompleteProfilePage]
+/// - Signed in with completed profile → [HomeControllerPage]
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  /// Checks if the citizen's profile has been completed in Firestore.
+  Future<bool> _isProfileComplete(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (!doc.exists) return false;
+      final data = doc.data();
+      return data != null && data['profileCompleted'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Still waiting for auth state — show a loading indicator.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // User is signed in → check if profile is complete.
+        if (snapshot.hasData) {
+          final user = snapshot.data!;
+          return FutureBuilder<bool>(
+            future: _isProfileComplete(user.uid),
+            builder: (context, profileSnapshot) {
+              if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              // Profile is complete → go to home.
+              if (profileSnapshot.data == true) {
+                return const HomeControllerPage();
+              }
+
+              // Profile not complete → show complete profile page.
+              return const CompleteProfilePage();
+            },
+          );
+        }
+
+        // Not signed in → show the get started page.
+        return const GetStartedPage();
       },
     );
   }

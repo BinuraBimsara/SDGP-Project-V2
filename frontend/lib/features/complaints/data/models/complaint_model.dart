@@ -1,37 +1,125 @@
-/// Complaint model – pure Dart, no Firebase dependency.
-/// When backend is ready, add fromDocument/toJson with Firestore types here.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+/// Complaint model with Firestore serialization support.
 class Complaint {
   final String id;
   final String title;
   final String description;
   final String category;
   final String imageUrl;
+  final List<String> imageUrls;
   final String status;
   final int upvoteCount;
   final int commentCount;
   final DateTime timestamp;
   final String authorId;
+  final String authorName;
   final String locationName;
   final double? latitude;
   final double? longitude;
   final bool isUpvoted;
+
+  /// List of user UIDs who have upvoted this complaint.
+  final List<String> upvotedBy;
+
+  /// Transient property to hold the calculated distance from a specific location
+  final double? distanceInMeters;
 
   Complaint({
     required this.id,
     required this.title,
     required this.description,
     required this.category,
-    required this.imageUrl,
+    this.imageUrl = '',
+    this.imageUrls = const [],
     required this.status,
     required this.upvoteCount,
     this.commentCount = 0,
     required this.timestamp,
     required this.authorId,
+    this.authorName = '',
     this.locationName = '',
     this.latitude,
     this.longitude,
     this.isUpvoted = false,
+    this.upvotedBy = const [],
+    this.distanceInMeters,
   });
+
+  /// Create a Complaint from a Firestore document snapshot.
+  factory Complaint.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    // Handle imageUrls: support both single imageUrl and list of imageUrls
+    final List<String> urls = [];
+    if (data['imageUrls'] != null && data['imageUrls'] is List) {
+      urls.addAll(List<String>.from(data['imageUrls']));
+    } else if (data['imageUrl'] != null &&
+        (data['imageUrl'] as String).isNotEmpty) {
+      urls.add(data['imageUrl'] as String);
+    }
+
+    // Handle timestamp: could be Firestore Timestamp or ISO string
+    DateTime ts;
+    if (data['timestamp'] is Timestamp) {
+      ts = (data['timestamp'] as Timestamp).toDate();
+    } else if (data['createdAt'] is Timestamp) {
+      ts = (data['createdAt'] as Timestamp).toDate();
+    } else if (data['timestamp'] is String) {
+      ts = DateTime.tryParse(data['timestamp'] as String) ?? DateTime.now();
+    } else {
+      ts = DateTime.now();
+    }
+
+    // Read upvotedBy array and check if current user has upvoted
+    final List<String> voters =
+        data['upvotedBy'] != null ? List<String>.from(data['upvotedBy']) : [];
+
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final hasUpvoted = voters.contains(currentUid);
+
+    return Complaint(
+      id: doc.id,
+      title: data['title'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      category: data['category'] as String? ?? 'Other',
+      imageUrl: urls.isNotEmpty ? urls.first : '',
+      imageUrls: urls,
+      status: data['status'] as String? ?? 'Pending',
+      upvoteCount: (data['upvoteCount'] as num?)?.toInt() ?? voters.length,
+      commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
+      timestamp: ts,
+      authorId: data['authorId'] as String? ?? '',
+      authorName: data['authorName'] as String? ?? '',
+      locationName: data['locationName'] as String? ?? '',
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      isUpvoted: hasUpvoted,
+      upvotedBy: voters,
+    );
+  }
+
+  /// Convert to a Firestore-ready map (for writing to the database).
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'description': description,
+      'category': category,
+      'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
+      'status': status,
+      'upvoteCount': upvoteCount,
+      'commentCount': commentCount,
+      'timestamp': Timestamp.fromDate(timestamp),
+      'authorId': authorId,
+      'authorName': authorName,
+      'locationName': locationName,
+      'latitude': latitude,
+      'longitude': longitude,
+      'upvotedBy': upvotedBy,
+    };
+  }
 
   Complaint copyWith({
     String? id,
@@ -39,15 +127,19 @@ class Complaint {
     String? description,
     String? category,
     String? imageUrl,
+    List<String>? imageUrls,
     String? status,
     int? upvoteCount,
     int? commentCount,
     DateTime? timestamp,
     String? authorId,
+    String? authorName,
     String? locationName,
     double? latitude,
     double? longitude,
     bool? isUpvoted,
+    List<String>? upvotedBy,
+    double? distanceInMeters,
   }) {
     return Complaint(
       id: id ?? this.id,
@@ -55,18 +147,23 @@ class Complaint {
       description: description ?? this.description,
       category: category ?? this.category,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       status: status ?? this.status,
       upvoteCount: upvoteCount ?? this.upvoteCount,
       commentCount: commentCount ?? this.commentCount,
       timestamp: timestamp ?? this.timestamp,
       authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
       locationName: locationName ?? this.locationName,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isUpvoted: isUpvoted ?? this.isUpvoted,
+      upvotedBy: upvotedBy ?? this.upvotedBy,
+      distanceInMeters: distanceInMeters ?? this.distanceInMeters,
     );
   }
 
+  /// Legacy JSON serialization (used by dummy data and Google Maps API).
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -74,15 +171,18 @@ class Complaint {
       'description': description,
       'category': category,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
       'status': status,
       'upvoteCount': upvoteCount,
       'commentCount': commentCount,
       'timestamp': timestamp.toIso8601String(),
       'authorId': authorId,
+      'authorName': authorName,
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
       'isUpvoted': isUpvoted,
+      'upvotedBy': upvotedBy,
     };
   }
 

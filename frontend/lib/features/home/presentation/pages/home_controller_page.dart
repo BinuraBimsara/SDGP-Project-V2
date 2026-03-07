@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
 import 'package:spotit/features/home/presentation/widgets/report_issue_modal.dart';
+import 'package:spotit/features/notifications/notification_badge.dart';
 import 'package:spotit/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:spotit/features/profile/presentation/pages/profile_page.dart';
-import 'package:spotit/main.dart';
+import 'package:spotit/core/theme/theme_switcher.dart';
 
 class HomeControllerPage extends StatefulWidget {
   const HomeControllerPage({super.key});
@@ -17,6 +18,34 @@ class HomeControllerPage extends StatefulWidget {
 class _HomeControllerPageState extends State<HomeControllerPage>
     with SingleTickerProviderStateMixin {
   int _currentNavIndex = 0;
+  // Key that changes on every tab switch to force page rebuild
+  Key _pageKey = UniqueKey();
+  // Key for the theme toggle button to calculate tap position
+  final GlobalKey _themeButtonKey = GlobalKey();
+
+  void _switchTab(int index) {
+    if (index != _currentNavIndex) {
+      setState(() {
+        _currentNavIndex = index;
+        _pageKey = UniqueKey();
+      });
+    }
+  }
+
+  Widget _currentPage() {
+    switch (_currentNavIndex) {
+      case 0:
+        return HomeFeedPage(key: _pageKey);
+      case 1:
+        return NotificationsPage(key: _pageKey);
+      case 2:
+        return MyReportsPage(key: _pageKey);
+      case 3:
+        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
+      default:
+        return HomeFeedPage(key: _pageKey);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,15 +53,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       drawer: _buildDrawer(),
-      body: IndexedStack(
-        index: _currentNavIndex,
-        children: const [
-          HomeFeedPage(),
-          NotificationsPage(),
-          MyReportsPage(),
-          ProfilePage(),
-        ],
-      ),
+      body: _currentPage(),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -53,25 +74,32 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           },
         ),
       ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
-          const SizedBox(width: 6),
-          Text(
-            'SpotIT LK',
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-        ],
+      title: Image.asset(
+        'assets/images/home_logo.png',
+        height: 36,
+        errorBuilder: (context, error, stackTrace) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.location_on, color: Color(0xFFF9A825), size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'SpotIT LK',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ],
+          );
+        },
       ),
       centerTitle: true,
       actions: [
-        // Animated sun/moon toggle
+        // Animated sun/moon toggle with circular reveal
         IconButton(
+          key: _themeButtonKey,
           icon: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             transitionBuilder: (child, animation) {
@@ -83,12 +111,18 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             child: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               key: ValueKey(isDark),
-              color: isDark ? Colors.purple : Colors.blueGrey,
+              color: isDark ? const Color(0xFFF9A825) : Colors.blueGrey,
             ),
           ),
           onPressed: () {
-            final mode = isDark ? ThemeMode.light : ThemeMode.dark;
-            SpotItApp.themeNotifier.value = mode;
+            final box = _themeButtonKey.currentContext?.findRenderObject()
+                as RenderBox?;
+            if (box != null) {
+              final position = box.localToGlobal(
+                Offset(box.size.width / 2, box.size.height / 2),
+              );
+              ThemeSwitcher.switchTheme(context, position);
+            }
           },
         ),
       ],
@@ -112,10 +146,16 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.location_on,
-                  color: Color(0xFFF9A825),
-                  size: 32,
+                Image.asset(
+                  'assets/images/home_logo.png',
+                  height: 32,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.location_on,
+                      color: Color(0xFFF9A825),
+                      size: 32,
+                    );
+                  },
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -245,11 +285,16 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
-              _buildNavItem(
-                icon: Icons.notifications_outlined,
-                label: 'Alerts',
-                index: 1,
-                badgeCount: 2,
+              ValueListenableBuilder<int>(
+                valueListenable: NotificationBadge.unreadCount,
+                builder: (context, count, child) {
+                  return _buildNavItem(
+                    icon: Icons.notifications_outlined,
+                    label: 'Alerts',
+                    index: 1,
+                    badgeCount: count,
+                  );
+                },
               ),
               // Center Report button
               GestureDetector(
@@ -303,11 +348,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     final inactiveColor = isDark ? Colors.white.withAlpha(102) : Colors.black38;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentNavIndex = index;
-        });
-      },
+      onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 56,

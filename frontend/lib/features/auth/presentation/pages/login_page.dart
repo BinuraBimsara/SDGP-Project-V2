@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
+import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
+import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
-import 'signup_dialog.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart';
 
 /// Roles supported by the login page.
 enum UserRole { citizen, official }
@@ -26,10 +29,10 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   // ─── Colors ──────────────────────────────────────────────
-  static const Color _green = Color(0xFF2EAA5E);
-  static const Color _lightGreen = Color(0xFFE8F5E9);
-  static const Color _bgColor = Color(0xFFEEF7EE);
-  static const Color _primaryColor = Color(0xFFF9A825);
+  static const Color _amber = Color(0xFFF9A825);
+  static const Color _lightAmber = Color(0xFFFFF8E1);
+  static const Color _bgGradientTop = Color(0xFFFCEABB);
+  static const Color _bgGradientBottom = Color(0xFFF8B500);
 
   // ─── Lifecycle ───────────────────────────────────────────
   @override
@@ -41,48 +44,53 @@ class _LoginPageState extends State<LoginPage> {
 
   // ─── Actions ─────────────────────────────────────────────
 
-  /// Google Sign-In → authenticate via Firebase, then navigate to home.
-  Future<void> _handleGoogleSignIn() async {
+  /// Citizen Google sign-in → check profile, navigate accordingly.
+  Future<void> _handleCitizenGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
       final userCredential = await AuthService().signInWithGoogle();
-      if (userCredential == null) {
-        // User cancelled the sign-in flow.
-        return;
-      }
+      if (userCredential == null) return; // cancelled
+      if (!mounted) return;
+
+      // Check if profile is already completed
+      final uid = userCredential.user!.uid;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final profileCompleted =
+          doc.exists && doc.data()?['profileCompleted'] == true;
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+        MaterialPageRoute(
+          builder: (_) => profileCompleted
+              ? const HomeControllerPage()
+              : const CompleteProfilePage(),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Sign-in failed: ${e.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-in failed: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Official email/password sign-in → navigate to home (no backend).
-  void _handleOfficialSignIn() {
-    if (!_formKey.currentState!.validate()) return;
+  /// Official email/password sign-in → navigate to gov dashboard.
+  /// DEV BYPASS: Skips auth validation and goes straight to gov dashboard.
+  Future<void> _handleOfficialSignIn() async {
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomeControllerPage()),
-    );
-  }
-
-  void _openSignUpDialog() {
-    showSignUpDialog(context);
-  }
-
-  void _showSnack(String msg, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : _green,
-        behavior: SnackBarBehavior.floating,
-      ),
+      MaterialPageRoute(builder: (_) => const GovHomeControllerPage()),
     );
   }
 
@@ -91,20 +99,150 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgColor,
-      body: SafeArea(
-        child: Column(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_bgGradientTop, _bgGradientBottom],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // ── Background decorative icons ──
+              _buildBackgroundIcons(),
+
+              // ── Main content ──
+              Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildCard(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Background Decorative Icons ─────────────────────────
+
+  Widget _buildBackgroundIcons() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
           children: [
-            _buildHeader(),
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildCard(),
-                ),
+            // Top-left location pin
+            Positioned(
+              top: 80,
+              left: 20,
+              child: Icon(
+                Icons.location_on,
+                size: 38,
+                color: _amber.withValues(alpha: 0.18),
               ),
             ),
-            _buildDemoNote(),
+            // Top-right gear
+            Positioned(
+              top: 60,
+              right: 25,
+              child: Icon(
+                Icons.settings,
+                size: 32,
+                color: _amber.withValues(alpha: 0.15),
+              ),
+            ),
+            // Mid-left report icon
+            Positioned(
+              top: 220,
+              left: 15,
+              child: Icon(
+                Icons.report_problem_outlined,
+                size: 30,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
+            // Mid-right map icon
+            Positioned(
+              top: 200,
+              right: 18,
+              child: Icon(
+                Icons.map_outlined,
+                size: 34,
+                color: _amber.withValues(alpha: 0.16),
+              ),
+            ),
+            // Bottom-left build/wrench
+            Positioned(
+              bottom: 120,
+              left: 30,
+              child: Icon(
+                Icons.build_outlined,
+                size: 28,
+                color: _amber.withValues(alpha: 0.13),
+              ),
+            ),
+            // Bottom-right people
+            Positioned(
+              bottom: 140,
+              right: 22,
+              child: Icon(
+                Icons.groups_outlined,
+                size: 36,
+                color: _amber.withValues(alpha: 0.15),
+              ),
+            ),
+            // Center-left cloud
+            Positioned(
+              top: 350,
+              left: 10,
+              child: Icon(
+                Icons.cloud_outlined,
+                size: 40,
+                color: _amber.withValues(alpha: 0.12),
+              ),
+            ),
+            // Center-right pin drop
+            Positioned(
+              top: 380,
+              right: 15,
+              child: Icon(
+                Icons.pin_drop_outlined,
+                size: 30,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
+            // Bottom-left shield/verified
+            Positioned(
+              bottom: 60,
+              left: 50,
+              child: Icon(
+                Icons.verified_user_outlined,
+                size: 26,
+                color: _amber.withValues(alpha: 0.13),
+              ),
+            ),
+            // Bottom-right notifications
+            Positioned(
+              bottom: 80,
+              right: 45,
+              child: Icon(
+                Icons.notifications_outlined,
+                size: 28,
+                color: _amber.withValues(alpha: 0.14),
+              ),
+            ),
           ],
         ),
       ),
@@ -115,43 +253,47 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: _primaryColor,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryColor.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'SpotIT',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                WidgetSpan(
+                  child: Transform.translate(
+                    offset: const Offset(2.0, -18.0),
+                    child: const Text(
+                      'LK',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: const Icon(Icons.location_on, color: Colors.white, size: 34),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'SpotIT LK',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 2),
           Text(
-            'Report, Track, Solve',
+            'Login to report, track,\nand solve issues.',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black.withValues(alpha: 0.7),
+              height: 1.35,
             ),
           ),
         ],
@@ -190,17 +332,6 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Sign in to continue',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
                 // ── Role Selector ──
                 _buildRoleSelector(),
                 const SizedBox(height: 20),
@@ -227,14 +358,52 @@ class _LoginPageState extends State<LoginPage> {
       key: const ValueKey('citizen-section'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildGoogleButton(),
-        const SizedBox(height: 18),
+        _buildLoginButton(),
+        const SizedBox(height: 16),
         _buildSignUpLink(),
       ],
     );
   }
 
-  // ─── Official Section (email/password) ────────────────────
+  // ─── Login Button (Citizen) ────────────────────────────────
+
+  Widget _buildLoginButton() {
+    return SizedBox(
+      key: const ValueKey('login-button'),
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleCitizenGoogleSignIn,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _amber,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: _amber.withValues(alpha: 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+      ),
+    );
+  }
+
+  // ─── Official Section (dev bypass - direct login) ──────
 
   Widget _buildOfficialSection() {
     return Column(
@@ -242,22 +411,10 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildOfficialInfoBanner(),
-        const SizedBox(height: 16),
-
-        // ── Email Field ──
-        _buildLabel('Email'),
-        const SizedBox(height: 6),
-        _buildEmailField(),
-        const SizedBox(height: 14),
-
-        // ── Password Field ──
-        _buildLabel('Password'),
-        const SizedBox(height: 6),
-        _buildPasswordField(),
-        const SizedBox(height: 22),
-
-        // ── Sign In Button ──
+        const SizedBox(height: 20),
         _buildSignInButton(),
+        const SizedBox(height: 16),
+        _buildSignUpLink(),
       ],
     );
   }
@@ -268,7 +425,7 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         Text(
-          'I am a',
+          'I am a/an',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -313,22 +470,22 @@ class _LoginPageState extends State<LoginPage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? _lightGreen : Colors.grey[100],
+          color: isSelected ? _lightAmber : Colors.grey[100],
           border: Border.all(
-            color: isSelected ? _green : Colors.grey[300]!,
+            color: isSelected ? _amber : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 28, color: isSelected ? _green : Colors.grey[500]),
+            Icon(icon, size: 28, color: isSelected ? _amber : Colors.grey[500]),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: isSelected ? _green : Colors.grey[600],
+                color: isSelected ? _amber : Colors.grey[600],
                 fontSize: 14,
               ),
             ),
@@ -344,10 +501,10 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E5F5), // Purple 50
+        color: const Color(0xFFFFF8E1), // Amber 50
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: const Color(0xFFCE93D8), width: 1.2), // Purple 200
+        border:
+            Border.all(color: const Color(0xFFFFD54F), width: 1.2), // Amber 300
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +513,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Government officials must log in with their official email credentials.',
+              'Dev mode: Click Login to access the Government Dashboard directly.',
               style: TextStyle(
                 fontSize: 12.5,
                 color: Colors.orange[900],
@@ -366,40 +523,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-    );
-  }
-
-  // ─── Google Button ───────────────────────────────────────
-
-  Widget _buildGoogleButton() {
-    return OutlinedButton(
-      onPressed: _isLoading ? null : _handleGoogleSignIn,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        side: BorderSide(color: _green.withValues(alpha: 0.5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            )
-          : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _GoogleLogo(size: 22),
-                SizedBox(width: 10),
-                Text(
-                  'Continue with Google',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
     );
   }
 
@@ -465,7 +588,7 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.circular(10),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: _green, width: 1.5),
+        borderSide: const BorderSide(color: _amber, width: 1.5),
         borderRadius: BorderRadius.circular(10),
       ),
       errorBorder: OutlineInputBorder(
@@ -487,7 +610,7 @@ class _LoginPageState extends State<LoginPage> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleOfficialSignIn,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _green,
+          backgroundColor: _amber,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -504,7 +627,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               )
             : const Text(
-                'Sign in',
+                'Login',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
       ),
@@ -514,83 +637,28 @@ class _LoginPageState extends State<LoginPage> {
   // ─── Sign Up Link ────────────────────────────────────────
 
   Widget _buildSignUpLink() {
-    if (_selectedRole == UserRole.official) return const SizedBox();
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "Don't have an account? ",
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Don't have an account? ",
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
           ),
-          GestureDetector(
-            onTap: _openSignUpDialog,
-            child: const Text(
-              'Sign up',
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+        ),
+        GestureDetector(
+          onTap: () => showSignUpDialog(context),
+          child: const Text(
+            'Sign up',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _amber,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-
-  // ─── Demo Note ───────────────────────────────────────────
-
-  Widget _buildDemoNote() {
-    return const SizedBox.shrink();
-  }
-}
-
-// ─── Google Logo Widget ──────────────────────────────────────────────────────
-
-class _GoogleLogo extends StatelessWidget {
-  final double size;
-  const _GoogleLogo({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _GoogleLogoPainter()),
-    );
-  }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-    final double r = size.width / 2;
-
-    Paint p(Color color) => Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.18
-      ..strokeCap = StrokeCap.butt;
-
-    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.75);
-
-    canvas.drawArc(rect, -1.1, 2.25, false, p(const Color(0xFF4285F4)));
-    canvas.drawArc(rect, 1.15, 1.65, false, p(const Color(0xFFFBBC05)));
-    canvas.drawArc(rect, 2.8, 1.65, false, p(const Color(0xFF34A853)));
-    canvas.drawArc(rect, -2.75, 1.65, false, p(const Color(0xFFEA4335)));
-
-    canvas.drawLine(
-      Offset(cx, cy),
-      Offset(cx + r * 0.75, cy),
-      Paint()
-        ..color = const Color(0xFF4285F4)
-        ..strokeWidth = size.width * 0.18,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
