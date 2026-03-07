@@ -30,8 +30,13 @@ class Comment {
 
 class ComplaintDetailPage extends StatefulWidget {
   final Complaint complaint;
+  final bool isOfficial;
 
-  const ComplaintDetailPage({super.key, required this.complaint});
+  const ComplaintDetailPage({
+    super.key,
+    required this.complaint,
+    this.isOfficial = false,
+  });
 
   @override
   State<ComplaintDetailPage> createState() => _ComplaintDetailPageState();
@@ -75,6 +80,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   }
 
   Future<void> _checkUserRole() async {
+    // If already marked as official (e.g. from gov dashboard), skip Firestore check
+    if (widget.isOfficial) {
+      if (mounted) setState(() => _isOfficial = true);
+      return;
+    }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {

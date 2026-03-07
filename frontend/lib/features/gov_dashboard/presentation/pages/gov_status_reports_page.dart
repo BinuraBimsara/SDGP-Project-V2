@@ -500,6 +500,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                                       repository: RepositoryProvider.of(context),
                                       child: ComplaintDetailPage(
                                         complaint: _complaints[index],
+                                        isOfficial: true,
                                       ),
                                     ),
                                   ),
