@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_category_reports_page.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_status_reports_page.dart';
 import 'package:spotit/main.dart';
 
 /// Main government dashboard page.
@@ -217,27 +218,25 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   }
 
   Widget _buildCategoryGrid(bool isDark) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 0.95,
+    return Center(
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        alignment: WrapAlignment.center,
+        children: _categories.map((cat) {
+          final count = _countByCategory(cat['label'] as String);
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 40 - 28) / 3,
+            child: _buildCategoryTile(
+              label: cat['label'] as String,
+              icon: cat['icon'] as IconData,
+              color: cat['color'] as Color,
+              count: count,
+              isDark: isDark,
+            ),
+          );
+        }).toList(),
       ),
-      itemCount: _categories.length,
-      itemBuilder: (context, index) {
-        final cat = _categories[index];
-        final count = _countByCategory(cat['label'] as String);
-        return _buildCategoryTile(
-          label: cat['label'] as String,
-          icon: cat['icon'] as IconData,
-          color: cat['color'] as Color,
-          count: count,
-          isDark: isDark,
-        );
-      },
     );
   }
 
@@ -261,6 +260,7 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
         ).then((_) => _loadComplaints());
       },
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -363,33 +363,46 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
 
   Widget _buildStatusChip(String label, int count, Color color, bool isDark) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withAlpha(isDark ? 30 : 20),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: color,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RepositoryProvider(
+                repository: RepositoryProvider.of(context),
+                child: GovStatusReportsPage(status: label),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white60 : Colors.black54,
+          ).then((_) => _loadComplaints());
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withAlpha(isDark ? 30 : 20),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
