@@ -61,7 +61,11 @@ service cloud.firestore {
       // Comments subcollection
       match /comments/{commentId} {
         allow read: if isSignedIn();
-        allow write: if false; // managed by Cloud Functions
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          isGovernment()
+        );
       }
     }
   }
