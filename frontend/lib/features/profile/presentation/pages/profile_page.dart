@@ -47,24 +47,17 @@ class _ProfilePageState extends State<ProfilePage> {
         totalUpvotes += (data['upvoteCount'] as num?)?.toInt() ?? 0;
       }
 
-      // Count comments given by this user (check all complaints' comments)
-      // We'll query all comments sub-collections where author matches
-      // For efficiency, we count comment documents across all complaints
-      int totalComments = 0;
-      final allComplaints = await firestore.collection('complaints').get();
-      for (final complaint in allComplaints.docs) {
-        final commentsSnap = await complaint.reference
-            .collection('comments')
-            .where('author', isEqualTo: user.displayName ?? user.email ?? '')
-            .get();
-        totalComments += commentsSnap.docs.length;
-      }
+      // Single collectionGroup query for all comments by this user
+      final commentsSnap = await firestore
+          .collectionGroup('comments')
+          .where('authorId', isEqualTo: user.uid)
+          .get();
 
       if (mounted) {
         setState(() {
           _reportsCount = reportsSnap.docs.length;
           _upvotesReceived = totalUpvotes;
-          _commentsGiven = totalComments;
+          _commentsGiven = commentsSnap.docs.length;
           _isLoading = false;
         });
       }

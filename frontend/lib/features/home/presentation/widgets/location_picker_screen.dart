@@ -47,11 +47,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   late AnimationController _pinAnimationController;
   late Animation<double> _pinOffsetAnim;
 
-  // ── Colors ──
-  static const _bg = Color(0xFF0D0D0D);
-  static const _surface = Color(0xFF1A1A1A);
+  // ── Accent ──
   static const _accent = Color(0xFFF9A825);
-  static const _border = Color(0xFF2A2A2A);
 
   @override
   void initState() {
@@ -158,14 +155,24 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF0D0D0D) : const Color(0xFFF5F5F5);
+    final surface = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+    final border = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtextColor = isDark ? Colors.white.withAlpha(130) : Colors.black54;
+    final coordColor = isDark ? Colors.white.withAlpha(60) : Colors.black38;
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: bg,
       extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(isDark, border),
       body: Stack(
         children: [
           // ── Map or fallback ──
-          _mapLoadFailed ? _buildFallbackMapArea() : _buildGoogleMap(),
+          _mapLoadFailed
+              ? _buildFallbackMapArea(bg)
+              : _buildGoogleMap(isDark),
 
           // ── Center Pin (only when map is loaded) ──
           if (!_mapLoadFailed)
@@ -184,24 +191,30 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
             left: 0,
             right: 0,
             bottom: 0,
-            child: _buildBottomPanel(),
+            child: _buildBottomPanel(
+              surface: surface,
+              border: border,
+              textColor: textColor,
+              subtextColor: subtextColor,
+              coordColor: coordColor,
+              isDark: isDark,
+            ),
           ),
 
           // ── GPS FAB ──
           Positioned(
             right: 16,
             bottom: 200,
-            child: _buildGpsFab(),
+            child: _buildGpsFab(surface, border, isDark),
           ),
         ],
       ),
     );
   }
 
-  // ── Google Map (with error catching) ────────────────────────────────────────
+  // ── Google Map (with theme-aware style) ──────────────────────────────────────
 
-  Widget _buildGoogleMap() {
-    // Wrap in a builder that catches platform view failures
+  Widget _buildGoogleMap(bool isDark) {
     return GoogleMap(
       initialCameraPosition: CameraPosition(
         target: widget.initialLatLng,
@@ -215,15 +228,15 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
       zoomControlsEnabled: false,
       mapToolbarEnabled: false,
       compassEnabled: false,
-      style: _mapStyle,
+      style: isDark ? _darkMapStyle : _lightMapStyle,
     );
   }
 
   // ── Fallback when map fails ─────────────────────────────────────────────────
 
-  Widget _buildFallbackMapArea() {
+  Widget _buildFallbackMapArea(Color bg) {
     return Container(
-      color: _bg,
+      color: bg,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -262,30 +275,35 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isDark, Color border) {
+    final pillBg = isDark ? Colors.black.withAlpha(160) : Colors.white.withAlpha(220);
+    final pillText = isDark ? Colors.white : Colors.black87;
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: _glassButton(
         icon: Icons.arrow_back_ios_new_rounded,
         onTap: () => Navigator.pop(context),
+        isDark: isDark,
+        border: border,
       ),
       title: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black.withAlpha(160),
+          color: pillBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _border),
+          border: Border.all(color: border),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_searching_rounded, color: _accent, size: 16),
-            SizedBox(width: 8),
+            const Icon(Icons.location_searching_rounded, color: _accent, size: 16),
+            const SizedBox(width: 8),
             Text(
               'Pick Location',
               style: TextStyle(
-                color: Colors.white,
+                color: pillText,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
@@ -302,6 +320,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   Widget _glassButton({
     required IconData icon,
     required VoidCallback onTap,
+    required bool isDark,
+    required Color border,
   }) {
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -309,11 +329,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.black.withAlpha(160),
+            color: isDark ? Colors.black.withAlpha(160) : Colors.white.withAlpha(220),
             shape: BoxShape.circle,
-            border: Border.all(color: _border),
+            border: Border.all(color: border),
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
+          child: Icon(icon, color: isDark ? Colors.white : Colors.black87, size: 18),
         ),
       ),
     );
@@ -363,7 +383,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
 
   // ── GPS FAB ─────────────────────────────────────────────────────────────────
 
-  Widget _buildGpsFab() {
+  Widget _buildGpsFab(Color surface, Color border, bool isDark) {
     return GestureDetector(
       onTap: _isFetchingGps ? null : _goToMyLocation,
       child: AnimatedContainer(
@@ -371,12 +391,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: _surface,
+          color: surface,
           shape: BoxShape.circle,
-          border: Border.all(color: _border),
+          border: Border.all(color: border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(100),
+              color: Colors.black.withAlpha(isDark ? 100 : 40),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -397,16 +417,23 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
 
   // ── Bottom panel ─────────────────────────────────────────────────────────────
 
-  Widget _buildBottomPanel() {
+  Widget _buildBottomPanel({
+    required Color surface,
+    required Color border,
+    required Color textColor,
+    required Color subtextColor,
+    required Color coordColor,
+    required bool isDark,
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
       decoration: BoxDecoration(
-        color: _surface,
+        color: surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: _border),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(150),
+            color: Colors.black.withAlpha(isDark ? 150 : 30),
             blurRadius: 30,
             offset: const Offset(0, -4),
           ),
@@ -423,7 +450,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(40),
+                color: isDark ? Colors.white.withAlpha(40) : Colors.black.withAlpha(30),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -433,7 +460,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
           Text(
             'Selected Location',
             style: TextStyle(
-              color: Colors.white.withAlpha(130),
+              color: subtextColor,
               fontSize: 12,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.5,
@@ -468,7 +495,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
                           Text(
                             'Finding address…',
                             style: TextStyle(
-                              color: Colors.white.withAlpha(120),
+                              color: subtextColor,
                               fontSize: 14,
                             ),
                           ),
@@ -476,8 +503,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
                       )
                     : Text(
                         _address,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
@@ -495,7 +522,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
           Text(
             '${_pickedLatLng.latitude.toStringAsFixed(5)}, ${_pickedLatLng.longitude.toStringAsFixed(5)}',
             style: TextStyle(
-              color: Colors.white.withAlpha(60),
+              color: coordColor,
               fontSize: 11,
               fontFamily: 'monospace',
             ),
@@ -532,9 +559,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
     );
   }
 
-  // ── Custom dark map style ────────────────────────────────────────────────────
+  // ── Map styles ──────────────────────────────────────────────────────────────
 
-  static const String _mapStyle = '''
+  static const String _darkMapStyle = '''
 [
   {"elementType":"geometry","stylers":[{"color":"#0d0d0d"}]},
   {"elementType":"labels.text.fill","stylers":[{"color":"#8a8a8a"}]},
@@ -554,4 +581,26 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#f9a825"}]}
 ]
 ''';
+
+  static const String _lightMapStyle = '''
+[
+  {"elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#616161"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#f5f5f5"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#e0e0e0"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#e8e8e8"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#d0d0d0"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#c8e6f5"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#6b9dc2"}]},
+  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#eeeeee"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c8e6c9"}]},
+  {"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#4caf50"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#e5e5e5"}]},
+  {"featureType":"administrative","elementType":"geometry.stroke","stylers":[{"color":"#c0c0c0"}]},
+  {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#f9a825"}]}
+]
+''';
 }
+
