@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotit/core/services/location_service.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_category_reports_page.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_status_reports_page.dart';
+import 'package:spotit/features/home/presentation/widgets/location_picker_screen.dart';
 import 'package:spotit/main.dart';
 
 /// Main government dashboard page.
@@ -18,6 +22,15 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   List<Complaint> _allComplaints = [];
   bool _isLoading = true;
 
+  // ── Location state ──
+  String _locationName = 'Detecting…';
+  double _userLat = 6.9271;
+  double _userLng = 79.8612;
+  bool _locationFetched = false;
+  static const _keyLat = 'last_lat';
+  static const _keyLng = 'last_lng';
+  static const _keyLocName = 'last_loc_name';
+
   // Category definitions matching the report function
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
@@ -30,7 +43,62 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   @override
   void initState() {
     super.initState();
+    _initLocation();
+  }
+
+  Future<void> _initLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedLat = prefs.getDouble(_keyLat);
+    final cachedLng = prefs.getDouble(_keyLng);
+    final cachedName = prefs.getString(_keyLocName);
+    if (cachedLat != null && cachedLng != null) {
+      _userLat = cachedLat;
+      _userLng = cachedLng;
+      _locationName = cachedName ?? 'Saved location';
+      _locationFetched = true;
+    }
     _loadComplaints();
+    _fetchLiveLocation(prefs);
+  }
+
+  Future<void> _fetchLiveLocation(SharedPreferences prefs) async {
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      _userLat = pos.latitude;
+      _userLng = pos.longitude;
+      _locationFetched = true;
+      final address = await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+      final shortAddr = _shortenAddress(address);
+      await prefs.setDouble(_keyLat, pos.latitude);
+      await prefs.setDouble(_keyLng, pos.longitude);
+      await prefs.setString(_keyLocName, shortAddr);
+      if (mounted) setState(() => _locationName = shortAddr);
+    } on LocationServiceException {
+      // Keep cached/default
+    }
+  }
+
+  String _shortenAddress(String address) {
+    final parts = address.split(', ');
+    if (parts.length > 2) return parts.sublist(parts.length - 2).join(', ');
+    return address;
+  }
+
+  Future<void> _changeLocation() async {
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLatLng: LatLng(_userLat, _userLng)),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _userLat = result.latLng.latitude;
+        _userLng = result.latLng.longitude;
+        _locationName = _shortenAddress(result.address);
+        _locationFetched = true;
+      });
+    }
   }
 
   Future<void> _loadComplaints() async {
@@ -86,6 +154,10 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Location Bar ──
+              _buildLocationBar(isDark),
+              const SizedBox(height: 16),
+
               // ── Welcome Card ──
               _buildWelcomeCard(isDark),
               const SizedBox(height: 28),
@@ -117,6 +189,52 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
 
               // ── Total Reports Summary ──
               _buildTotalReportsSummary(isDark),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationBar(bool isDark) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: GestureDetector(
+        onTap: _changeLocation,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: const BoxConstraints(maxWidth: 200),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(26)
+                  : Colors.black.withAlpha(26),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _locationFetched
+                    ? Icons.location_on
+                    : Icons.location_searching_rounded,
+                color: const Color(0xFFF9A825),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  _locationName,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

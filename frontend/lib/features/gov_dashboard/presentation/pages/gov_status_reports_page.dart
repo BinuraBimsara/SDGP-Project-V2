@@ -15,8 +15,10 @@ class GovStatusReportsPage extends StatefulWidget {
 
 class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
   List<Complaint> _complaints = [];
+  List<Complaint> _allStatusComplaints = [];
   bool _isLoading = true;
   String _sortMode = 'Highest Priority';
+  String _selectedCategory = 'All';
 
   static const Map<String, Color> _statusColors = {
     'Pending': Color(0xFFEF5350),
@@ -38,6 +40,15 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
     'Most Downvoted',
   ];
 
+  static const List<Map<String, dynamic>> _categories = [
+    {'label': 'All', 'icon': Icons.all_inclusive, 'color': Color(0xFFF9A825)},
+    {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
+    {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
+    {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
+    {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -51,16 +62,27 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
       final all = await repo.getComplaints();
       if (mounted) {
         setState(() {
-          _complaints = all
+          _allStatusComplaints = all
               .where((c) => c.status == widget.status)
               .toList();
-          _sortComplaints();
+          _applyFilters();
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _applyFilters() {
+    if (_selectedCategory == 'All') {
+      _complaints = List.from(_allStatusComplaints);
+    } else {
+      _complaints = _allStatusComplaints
+          .where((c) => c.category == _selectedCategory)
+          .toList();
+    }
+    _sortComplaints();
   }
 
   void _sortComplaints() {
@@ -207,6 +229,118 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
     );
   }
 
+  void _showCategoryFilterDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(10),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.category_rounded,
+                  color: const Color(0xFFF9A825),
+                  size: 28,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Select Category',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Filter by report category',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ..._categories.map((cat) {
+                  final label = cat['label'] as String;
+                  final icon = cat['icon'] as IconData;
+                  final color = cat['color'] as Color;
+                  final isSelected = _selectedCategory == label;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = label;
+                          _applyFilters();
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? color.withAlpha(isDark ? 40 : 25)
+                              : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected
+                              ? Border.all(color: color, width: 1.5)
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(icon, size: 18, color: isSelected ? color : (isDark ? Colors.white54 : Colors.black45)),
+                            const SizedBox(width: 12),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? color
+                                    : (isDark ? Colors.white70 : Colors.black87),
+                              ),
+                            ),
+                            const Spacer(),
+                            if (isSelected)
+                              Icon(Icons.check_circle, color: color, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -245,7 +379,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
       ),
       body: Column(
         children: [
-          // ── Report Count & Sort Info ──
+          // ── Report Count & Filter Info ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
@@ -258,7 +392,60 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                     color: isDark ? Colors.white54 : Colors.black45,
                   ),
                 ),
+                if (_selectedCategory != 'All') ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = 'All';
+                        _applyFilters();
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withAlpha(20),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusColor.withAlpha(80)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _selectedCategory,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.close_rounded, size: 12, color: statusColor),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const Spacer(),
+                GestureDetector(
+                  onTap: _showCategoryFilterDialog,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.category_rounded, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        _selectedCategory,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
                 GestureDetector(
                   onTap: _showFilterDialog,
                   child: Row(
