@@ -32,39 +32,58 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    try {
-      final firestore = FirebaseFirestore.instance;
+    final firestore = FirebaseFirestore.instance;
 
-      // Count reports submitted by this user
-      final reportsSnap = await firestore
+    // ── Reports & Upvotes (independent try/catch) ──
+    try {
+      // Fetch all complaints, filter client-side to avoid composite index
+      final allComplaintsSnap = await firestore
           .collection('complaints')
-          .where('authorId', isEqualTo: user.uid)
           .get();
 
+      final myComplaints = allComplaintsSnap.docs
+          .where((doc) => doc.data()['authorId'] == user.uid)
+          .toList();
+
       int totalUpvotes = 0;
-      for (final doc in reportsSnap.docs) {
+      for (final doc in myComplaints) {
         final data = doc.data();
         totalUpvotes += (data['upvoteCount'] as num?)?.toInt() ?? 0;
       }
 
-      // Single collectionGroup query for all comments by this user
-      final commentsSnap = await firestore
-          .collectionGroup('comments')
-          .where('authorId', isEqualTo: user.uid)
-          .get();
-
       if (mounted) {
         setState(() {
-          _reportsCount = reportsSnap.docs.length;
+          _reportsCount = myComplaints.length;
           _upvotesReceived = totalUpvotes;
-          _commentsGiven = commentsSnap.docs.length;
-          _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Error loading profile stats: $e');
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('Error loading reports/upvotes stats: $e');
     }
+
+    // ── Comments Given (independent try/catch) ──
+    try {
+      final complaintsSnap = await firestore.collection('complaints').get();
+      int commentsCount = 0;
+
+      for (final complaintDoc in complaintsSnap.docs) {
+        final commentsSnap = await complaintDoc.reference
+            .collection('comments')
+            .where('authorId', isEqualTo: user.uid)
+            .get();
+        commentsCount += commentsSnap.docs.length;
+      }
+
+      if (mounted) {
+        setState(() {
+          _commentsGiven = commentsCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading comments stats: $e');
+    }
+
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _signOut() async {
