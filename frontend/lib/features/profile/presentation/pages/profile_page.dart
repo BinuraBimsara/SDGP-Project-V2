@@ -7,7 +7,10 @@ class ProfilePage extends StatefulWidget {
   /// Callback to switch the bottom navigation tab (used to jump to Reports tab).
   final void Function(int index)? onSwitchTab;
 
-  const ProfilePage({super.key, this.onSwitchTab});
+  /// Whether this profile belongs to a government official.
+  final bool isOfficial;
+
+  const ProfilePage({super.key, this.onSwitchTab, this.isOfficial = false});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -288,11 +291,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.person_outline_rounded,
-                            color: accent, size: 14),
+                        Icon(
+                            widget.isOfficial || email.endsWith('.gov.lk')
+                                ? Icons.admin_panel_settings_outlined
+                                : Icons.person_outline_rounded,
+                            color: accent,
+                            size: 14),
                         const SizedBox(width: 4),
                         Text(
-                          email.endsWith('.gov.lk') ? 'Official' : 'Citizen',
+                          widget.isOfficial || email.endsWith('.gov.lk') ? 'Official' : 'Citizen',
                           style: const TextStyle(
                             color: accent,
                             fontSize: 12,

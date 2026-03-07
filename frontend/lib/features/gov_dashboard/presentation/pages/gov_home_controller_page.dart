@@ -37,7 +37,7 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
       case 1:
         return NotificationsPage(key: _pageKey);
       case 2:
-        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
+        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab, isOfficial: true);
       default:
         return GovDashboardPage(key: _pageKey);
     }
