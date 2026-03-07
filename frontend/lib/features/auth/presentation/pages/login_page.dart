@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
+import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart';
 
@@ -42,16 +44,31 @@ class _LoginPageState extends State<LoginPage> {
 
   // ─── Actions ─────────────────────────────────────────────
 
-  /// Citizen Google sign-in → navigate to home.
+  /// Citizen Google sign-in → check profile, navigate accordingly.
   Future<void> _handleCitizenGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
       final userCredential = await AuthService().signInWithGoogle();
       if (userCredential == null) return; // cancelled
       if (!mounted) return;
+
+      // Check if profile is already completed
+      final uid = userCredential.user!.uid;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final profileCompleted =
+          doc.exists && doc.data()?['profileCompleted'] == true;
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+        MaterialPageRoute(
+          builder: (_) => profileCompleted
+              ? const HomeControllerPage()
+              : const CompleteProfilePage(),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
