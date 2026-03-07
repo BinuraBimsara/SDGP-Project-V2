@@ -26,6 +26,8 @@ dependencies:
   geolocator: ^13.0.0
   geocoding: ^3.0.0
   http: ^1.2.0
+  shared_preferences: ^2.2.3
+  cached_network_image: ^3.3.1
   backend:
     path: ../backend
 

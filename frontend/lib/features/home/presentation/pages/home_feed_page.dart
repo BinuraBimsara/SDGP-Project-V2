@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:spotit/core/services/location_service.dart';
@@ -28,6 +29,11 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   double _userLng = 79.8612;
   bool _locationFetched = false;
 
+  // SharedPreferences keys for caching last known location
+  static const _keyLat = 'last_lat';
+  static const _keyLng = 'last_lng';
+  static const _keyLocName = 'last_loc_name';
+
   final List<String> _filters = [
     'All',
     'Waste',
@@ -46,22 +52,56 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     }
   }
 
-  /// Auto-detect user location once on startup.
+  /// Non-blocking location init:
+  /// 1. Instantly load cached location from SharedPreferences (or default).
+  /// 2. Immediately load complaints so the user sees the feed within ~1s.
+  /// 3. In parallel, request GPS; when it arrives, silently refresh.
   Future<void> _initLocation() async {
+    // 1. Load cached location instantly
+    final prefs = await SharedPreferences.getInstance();
+    final cachedLat = prefs.getDouble(_keyLat);
+    final cachedLng = prefs.getDouble(_keyLng);
+    final cachedName = prefs.getString(_keyLocName);
+
+    if (cachedLat != null && cachedLng != null) {
+      _userLat = cachedLat;
+      _userLng = cachedLng;
+      _locationName = cachedName ?? 'Saved location';
+      _locationFetched = true;
+    }
+
+    // 2. Immediately load complaints with cached/default location
+    _loadComplaints();
+
+    // 3. Fetch real GPS in background (don't block the UI)
+    _fetchLiveLocation(prefs);
+  }
+
+  /// Background GPS fetch — updates the feed silently when position arrives.
+  Future<void> _fetchLiveLocation(SharedPreferences prefs) async {
     try {
       final pos = await LocationService.getCurrentPosition();
       _userLat = pos.latitude;
       _userLng = pos.longitude;
       _locationFetched = true;
+
       final address =
           await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+      final shortAddr = _shortenAddress(address);
+
+      // Persist for next session
+      await prefs.setDouble(_keyLat, pos.latitude);
+      await prefs.setDouble(_keyLng, pos.longitude);
+      await prefs.setString(_keyLocName, shortAddr);
+
       if (mounted) {
-        setState(() => _locationName = _shortenAddress(address));
+        setState(() => _locationName = shortAddr);
+        // Silently reload complaints with the accurate location
+        _loadComplaints();
       }
     } on LocationServiceException {
-      if (mounted) setState(() => _locationName = 'Colombo');
+      // Keep using cached / default — no-op
     }
-    _loadComplaints();
   }
 
   /// Shorten a long address to just the locality portion for the chip.
