@@ -172,10 +172,7 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
       ),
       body: Column(
         children: [
-          // ── Sort/Filter Bar ──
-          _buildSortBar(isDark, catColor),
-
-          // ── Report Count ──
+          // ── Report Count & Sort Info ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
@@ -189,12 +186,22 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  _sortModeLabel(_sortMode),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: catColor,
+                GestureDetector(
+                  onTap: () => _showFilterDialog(isDark, catColor),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.sort, size: 14, color: catColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        _sortModeLabel(_sortMode),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: catColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -234,72 +241,124 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
     );
   }
 
-  Widget _buildSortBar(bool isDark, Color accentColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(10),
-          ),
-        ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: ReportSortMode.values.map((mode) {
-            final isSelected = _sortMode == mode;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                selected: isSelected,
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _sortModeIcon(mode),
-                      size: 14,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? Colors.white60 : Colors.black54),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _sortModeLabel(mode),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white60 : Colors.black54),
-                      ),
-                    ),
-                  ],
+  void _showFilterDialog(bool isDark, Color accentColor) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(10),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.filter_list_rounded,
+                  color: const Color(0xFFF9A825),
+                  size: 28,
                 ),
-                backgroundColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
-                selectedColor: accentColor,
-                checkmarkColor: Colors.white,
-                showCheckmark: false,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected ? accentColor : Colors.transparent,
+                const SizedBox(height: 12),
+                Text(
+                  'Sort Reports',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() {
-                      _sortMode = mode;
-                      _sortComplaints();
-                    });
-                  }
-                },
-              ),
-            );
-          }).toList(),
-        ),
-      ),
+                const SizedBox(height: 6),
+                Text(
+                  'Filter reports by priority',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ...ReportSortMode.values.map((mode) {
+                  final isSelected = _sortMode == mode;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _sortMode = mode;
+                          _sortComplaints();
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFF9A825).withAlpha(isDark ? 40 : 25)
+                              : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected
+                              ? Border.all(color: const Color(0xFFF9A825), width: 1.5)
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _sortModeIcon(mode),
+                              size: 18,
+                              color: isSelected
+                                  ? const Color(0xFFF9A825)
+                                  : (isDark ? Colors.white54 : Colors.black45),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              _sortModeLabel(mode),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? const Color(0xFFF9A825)
+                                    : (isDark ? Colors.white70 : Colors.black87),
+                              ),
+                            ),
+                            const Spacer(),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFFF9A825),
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
