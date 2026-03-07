@@ -5,8 +5,11 @@ import 'package:http/http.dart' as http;
 /// Uses Google Maps Distance Matrix API to calculate road-distances.
 /// Falls back to Haversine straight-line distance if the API key is missing or invalid.
 class GoogleMapsMockAPI {
-  // TODO: Insert your Google Maps API Key here to enable real-time routing distance
-  static const String _apiKey = 'YOUR_API_KEY_HERE';
+  // Geocoding / Distance Matrix API key.
+  // Pass at build-time:  flutter run --dart-define=MAPS_API_KEY=<key>
+  // Falls back to empty string when not provided.
+  static const String _apiKey =
+      String.fromEnvironment('MAPS_API_KEY', defaultValue: '');
 
   /// Calculates the Haversine distance between two coordinates in kilometers.
   static double _calculateDistance(
@@ -51,7 +54,7 @@ class GoogleMapsMockAPI {
 
     if (filtered.isEmpty) return filtered;
 
-    if (_apiKey == 'YOUR_API_KEY_HERE' || _apiKey.isEmpty) {
+    if (_apiKey.isEmpty) {
       print(
           'WARNING: Real Google Maps API Key not set. Falling back to computational Haversine distance.');
       _applyHaversine(userLat, userLng, filtered);
