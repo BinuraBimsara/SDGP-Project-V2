@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 
 class ComplaintCard extends StatefulWidget {
@@ -437,7 +438,7 @@ class _DynamicAspectRatioImageState extends State<_DynamicAspectRatioImage> {
 
   void _resolveImageDimensions() {
     _imageStream =
-        NetworkImage(widget.imageUrl).resolve(ImageConfiguration.empty);
+        CachedNetworkImageProvider(widget.imageUrl).resolve(ImageConfiguration.empty);
     _listener = ImageStreamListener(
       (ImageInfo info, bool _) {
         if (!mounted) return;
@@ -469,27 +470,20 @@ class _DynamicAspectRatioImageState extends State<_DynamicAspectRatioImage> {
       curve: Curves.easeOut,
       child: AspectRatio(
         aspectRatio: _aspectRatio,
-        child: Image.network(
-          widget.imageUrl,
+        child: CachedNetworkImage(
+          imageUrl: widget.imageUrl,
           width: double.infinity,
           fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              color: placeholderColor,
-              child: Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-                  color: const Color(0xFFF9A825),
-                  strokeWidth: 2,
-                ),
+          placeholder: (context, url) => Container(
+            color: placeholderColor,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFF9A825),
+                strokeWidth: 2,
               ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) => Container(
+            ),
+          ),
+          errorWidget: (context, url, error) => Container(
             color: placeholderColor,
             child: const Center(
               child: Icon(
