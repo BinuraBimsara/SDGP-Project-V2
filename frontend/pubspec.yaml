@@ -30,6 +30,7 @@ dependencies:
   cached_network_image: ^3.3.1
   backend:
     path: ../backend
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

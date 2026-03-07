@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:spotit/main.dart';
@@ -27,8 +30,13 @@ class Comment {
 
 class ComplaintDetailPage extends StatefulWidget {
   final Complaint complaint;
+  final bool isOfficial;
 
-  const ComplaintDetailPage({super.key, required this.complaint});
+  const ComplaintDetailPage({
+    super.key,
+    required this.complaint,
+    this.isOfficial = false,
+  });
 
   @override
   State<ComplaintDetailPage> createState() => _ComplaintDetailPageState();
@@ -46,6 +54,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   Comment? _replyingTo;
   int _currentImagePage = 0;
   bool _isLoadingComments = true;
+  bool _isOfficial = false;
   late ComplaintRepository _repository;
 
   @override
@@ -67,6 +76,28 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         curve: Curves.easeOut,
       ),
     );
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    // If already marked as official (e.g. from gov dashboard), skip Firestore check
+    if (widget.isOfficial) {
+      if (mounted) setState(() => _isOfficial = true);
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists && doc.data()?['role'] == 'official' && mounted) {
+        setState(() => _isOfficial = true);
+      }
+    } catch (e) {
+      debugPrint('Error checking user role: $e');
+    }
   }
 
   @override
@@ -779,6 +810,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                           ),
                           const SizedBox(height: 16),
 
+                          // Official-only location section
+                          if (_isOfficial)
+                            _buildOfficialLocationSection(isDark, textColor),
+
                           // Comments section header
                           Row(
                             children: [
@@ -1037,6 +1072,227 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       ),
     );
   }
+
+  // ── Official-only location section with map + navigation ──
+  Widget _buildOfficialLocationSection(bool isDark, Color textColor) {
+    final lat = _complaint.latitude;
+    final lng = _complaint.longitude;
+
+    // No coordinates → don't show anything
+    if (lat == null || lng == null) return const SizedBox.shrink();
+
+    final target = LatLng(lat, lng);
+    const accent = Color(0xFFF9A825);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
+    final border = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: accent.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.shield_rounded, color: accent, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Official: Complaint Location',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Map card
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(isDark ? 80 : 20),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 200,
+              width: double.infinity,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: target,
+                  zoom: 15,
+                ),
+                markers: {
+                  Marker(
+                    markerId: const MarkerId('complaint_location'),
+                    position: target,
+                    infoWindow: InfoWindow(
+                      title: _complaint.title,
+                      snippet: _complaint.locationName,
+                    ),
+                  ),
+                },
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                mapToolbarEnabled: false,
+                compassEnabled: false,
+                scrollGesturesEnabled: false,
+                rotateGesturesEnabled: false,
+                tiltGesturesEnabled: false,
+                zoomGesturesEnabled: false,
+                liteModeEnabled: true,
+                style: isDark ? _darkMapStyle : _lightMapStyle,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Location name
+        if (_complaint.locationName.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.location_on_rounded, color: accent, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _complaint.locationName,
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white.withAlpha(180)
+                          : Colors.black54,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Get Directions button
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.navigation_rounded, size: 20),
+            label: const Text(
+              'Get Directions in Google Maps',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            onPressed: () => _openGoogleMapsNavigation(lat, lng),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Future<void> _openGoogleMapsNavigation(double lat, double lng) async {
+    // Try Google Maps app first
+    final googleMapsUri = Uri.parse(
+      'google.navigation:q=$lat,$lng&mode=d',
+    );
+
+    if (await canLaunchUrl(googleMapsUri)) {
+      await launchUrl(googleMapsUri);
+      return;
+    }
+
+    // Fallback: open in browser
+    final browserUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(browserUri)) {
+      await launchUrl(browserUri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not open maps application'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Map styles (same as LocationPickerScreen) ──
+  static const String _darkMapStyle = '''
+[
+  {"elementType":"geometry","stylers":[{"color":"#0d0d0d"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#8a8a8a"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#0d0d0d"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#1f1f1f"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#303030"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#2a2a2a"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#3a3a3a"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#08141a"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#445e75"}]},
+  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#131313"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#0a1c12"}]},
+  {"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#2d5a27"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#141414"}]},
+  {"featureType":"administrative","elementType":"geometry.stroke","stylers":[{"color":"#2a2a2a"}]},
+  {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#9e9e9e"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#f9a825"}]}
+]
+''';
+
+  static const String _lightMapStyle = '''
+[
+  {"elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#616161"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#f5f5f5"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#e0e0e0"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#e8e8e8"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#d0d0d0"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#c8e6f5"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#6b9dc2"}]},
+  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#eeeeee"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#c8e6c9"}]},
+  {"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#4caf50"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#e5e5e5"}]},
+  {"featureType":"administrative","elementType":"geometry.stroke","stylers":[{"color":"#c0c0c0"}]},
+  {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#f9a825"}]}
+]
+''';
 
   /// Recursively build comment thread widgets with indentation.
   List<Widget> _buildCommentThread(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/widgets/gov_report_card.dart';
+import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
 import 'package:spotit/main.dart';
 
 /// Page that shows all reports filtered by a specific status (Pending, In Progress, Resolved).
@@ -491,6 +492,20 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                               complaint: _complaints[index],
                               priorityRank: index + 1,
                               onStatusChanged: _onStatusChanged,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RepositoryProvider(
+                                      repository: RepositoryProvider.of(context),
+                                      child: ComplaintDetailPage(
+                                        complaint: _complaints[index],
+                                        isOfficial: true,
+                                      ),
+                                    ),
+                                  ),
+                                ).then((_) => _loadReports());
+                              },
                             );
                           },
                         ),

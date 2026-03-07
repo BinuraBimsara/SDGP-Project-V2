@@ -7,12 +7,14 @@ class GovReportCard extends StatefulWidget {
   final Complaint complaint;
   final int priorityRank;
   final Future<void> Function(String complaintId, String newStatus) onStatusChanged;
+  final VoidCallback? onTap;
 
   const GovReportCard({
     super.key,
     required this.complaint,
     required this.priorityRank,
     required this.onStatusChanged,
+    this.onTap,
   });
 
   @override
@@ -132,7 +134,9 @@ class _GovReportCardState extends State<GovReportCard> {
     final statusColor = _statusColors[complaint.status] ?? Colors.grey;
     final statusIcon = _statusIcons[complaint.status] ?? Icons.circle;
 
-    return Container(
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -376,6 +380,7 @@ class _GovReportCardState extends State<GovReportCard> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
