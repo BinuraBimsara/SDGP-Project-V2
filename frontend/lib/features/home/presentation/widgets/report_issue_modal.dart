@@ -459,7 +459,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             color: _accentGreen.withAlpha(180),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
@@ -470,8 +470,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   strokeWidth: 2.5,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Uploading…',
                 style: TextStyle(
                   color: Colors.white,
