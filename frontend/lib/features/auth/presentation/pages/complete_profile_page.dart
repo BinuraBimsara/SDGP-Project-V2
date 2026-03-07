@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
@@ -31,6 +34,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
   final _phoneController = TextEditingController();
 
   File? _profileImage;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -125,6 +129,81 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     }
   }
 
+  // ─── Upload Image to Firebase Storage ─────────────────────
+
+  Future<String?> _uploadProfileImage(String uid) async {
+    if (_profileImage == null) return null;
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('profile_images')
+        .child('$uid.jpg');
+
+    await ref.putFile(
+      _profileImage!,
+      SettableMetadata(contentType: 'image/jpeg'),
+    );
+
+    return await ref.getDownloadURL();
+  }
+
+  // ─── Save Profile ─────────────────────────────────────────
+
+  Future<void> _handleFinishSetup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('No authenticated user found');
+
+      // Upload profile image if selected
+      final photoUrl = await _uploadProfileImage(user.uid);
+
+      final firstName = _firstNameController.text.trim();
+      final lastName = _lastNameController.text.trim();
+      final fullName = '$firstName $lastName';
+
+      // Save profile data to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'firstName': firstName,
+        'lastName': lastName,
+        'displayName': fullName,
+        'phone': _phoneController.text.trim(),
+        'email': user.email,
+        'photoUrl': photoUrl ?? user.photoURL,
+        'role': 'citizen',
+        'profileCompleted': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Update Firebase Auth display name
+      await user.updateDisplayName(fullName);
+      if (photoUrl != null) {
+        await user.updatePhotoURL(photoUrl);
+      }
+
+      if (!mounted) return;
+
+      // Navigate to home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save profile: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   // ─── Build ────────────────────────────────────────────────
 
   @override
@@ -211,36 +290,8 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                 ),
                 const SizedBox(height: 40),
 
-                // ── Temporary nav to home (will be replaced) ──
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (!_formKey.currentState!.validate()) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const HomeControllerPage()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _amber,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'Finish Setup',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ),
+                // ── Finish Setup Button ──
+                _buildFinishButton(),
               ],
             ),
           ),
@@ -354,6 +405,43 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
           borderSide: const BorderSide(color: Colors.redAccent, width: 1.8),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent),
+      ),
+    );
+  }
+
+  // ─── Finish Setup Button ─────────────────────────────────
+
+  Widget _buildFinishButton() {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleFinishSetup,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _amber,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _amber.withValues(alpha: 0.5),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Finish Setup',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
       ),
     );
   }
