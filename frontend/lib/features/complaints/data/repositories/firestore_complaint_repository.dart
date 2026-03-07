@@ -116,6 +116,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String text, {
     required String authorId,
     String? parentCommentId,
+    bool isOfficial = false,
   }) async {
     final docRef = _complaintsRef.doc(complaintId);
 
@@ -125,6 +126,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       'authorId': authorId,
       'text': text,
       'parentCommentId': parentCommentId,
+      'isOfficial': isOfficial,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -155,6 +157,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'authorId': data['authorId'] as String? ?? '',
         'text': data['text'] as String? ?? '',
         'parentCommentId': data['parentCommentId'] as String?,
+        'isOfficial': data['isOfficial'] as bool? ?? false,
         'timestamp': data['timestamp'] is Timestamp
             ? (data['timestamp'] as Timestamp).toDate()
             : DateTime.now(),
