@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/widgets/gov_report_card.dart';
+import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
 import 'package:spotit/main.dart';
 
 /// Sort modes for report listing.
@@ -231,6 +232,19 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
                               complaint: _complaints[index],
                               priorityRank: index + 1,
                               onStatusChanged: _onStatusChanged,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RepositoryProvider(
+                                      repository: RepositoryProvider.of(context),
+                                      child: ComplaintDetailPage(
+                                        complaint: _complaints[index],
+                                      ),
+                                    ),
+                                  ),
+                                ).then((_) => _loadReports());
+                              },
                             );
                           },
                         ),
