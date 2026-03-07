@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
+import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 
 // ─── Show Sign-Up Dialog ─────────────────────────────────────────────────────
@@ -123,10 +125,25 @@ class _SignUpDialogState extends State<SignUpDialog>
         return; // cancelled
       }
       if (!mounted) return;
+
+      // Check if profile is already completed
+      final uid = userCredential.user!.uid;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final profileCompleted =
+          doc.exists && doc.data()?['profileCompleted'] == true;
+
       Navigator.of(context).pop(); // close dialog
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeControllerPage()),
+        MaterialPageRoute(
+          builder: (_) => profileCompleted
+              ? const HomeControllerPage()
+              : const CompleteProfilePage(),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
