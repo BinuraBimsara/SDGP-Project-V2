@@ -71,6 +71,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   final List<XFile> _pickedImages = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  bool _submitSuccess = false;
   String? _errorMessage;
   bool _isCategoryExpanded = false;
 
@@ -259,22 +260,31 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       await repo.createComplaint(complaint, images: _pickedImages);
 
       if (!mounted) return;
-      Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Report submitted successfully! 🎉'),
-          backgroundColor: Color(0xFFF9A825),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      // Show success state
+      setState(() {
+        _isSubmitting = false;
+        _submitSuccess = true;
+      });
+
+      // Auto-close after 1.5 seconds
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report submitted successfully! 🎉'),
+            backgroundColor: Color(0xFFF9A825),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
     } catch (e) {
       debugPrint('Submit error: $e');
       if (mounted) {
         _showError('Failed to submit report. Please try again.');
+        setState(() => _isSubmitting = false);
       }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -397,35 +407,106 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Submit Button ──
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _accentGreen,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 0,
-                      ),
-                      icon: const Icon(Icons.send_rounded, size: 20),
-                      label: const Text(
-                        'Submit Report',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      onPressed: _isSubmitting ? null : _handleSubmit,
-                    ),
-                  ),
+                  // ── Animated Submit Button ──
+                  _buildAnimatedSubmitButton(),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Animated Submit Button ──
+  Widget _buildAnimatedSubmitButton() {
+    if (_submitSuccess) {
+      // ── Success state ──
+      return SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Report Sent! 🎉',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_isSubmitting) {
+      // ── Submitting state ──
+      return SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _accentGreen.withAlpha(180),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Uploading…',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Idle state ──
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _accentGreen,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          elevation: 0,
+        ),
+        icon: const Icon(Icons.send_rounded, size: 20),
+        label: const Text(
+          'Submit Report',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        onPressed: _handleSubmit,
       ),
     );
   }
