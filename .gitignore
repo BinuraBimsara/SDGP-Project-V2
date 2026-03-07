@@ -15,6 +15,7 @@ frontend/.flutter-plugins
 frontend/.flutter-plugins-dependencies
 frontend/android/.gradle/
 frontend/android/local.properties
+frontend/ios/Flutter/Secrets.xcconfig
 frontend/ios/Pods/
 frontend/ios/.symlinks/
 frontend/ios/Flutter/ephemeral/
