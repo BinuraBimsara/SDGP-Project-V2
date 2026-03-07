@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_status_reports_page.dart';
 import 'package:spotit/main.dart';
 
 /// Government official profile page with Uber-inspired layout.
@@ -54,6 +55,18 @@ class _GovProfilePageState extends State<GovProfilePage> {
 
   String? _getUserPhoto() {
     return FirebaseAuth.instance.currentUser?.photoURL;
+  }
+
+  void _navigateToStatus(String status) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RepositoryProvider(
+          repository: RepositoryProvider.of(context),
+          child: GovStatusReportsPage(status: status),
+        ),
+      ),
+    );
   }
 
   Future<void> _signOut() async {
@@ -238,14 +251,17 @@ class _GovProfilePageState extends State<GovProfilePage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildActionBlock(
-                      icon: Icons.check_circle_outline,
-                      label: 'Reports Resolved',
-                      value: _isLoading ? '...' : '$resolved',
-                      cardBg: cardBg,
-                      textColor: textColor,
-                      subtextColor: subtextColor,
-                      isDark: isDark,
+                    child: GestureDetector(
+                      onTap: () => _navigateToStatus('Resolved'),
+                      child: _buildActionBlock(
+                        icon: Icons.check_circle_outline,
+                        label: 'Reports Resolved',
+                        value: _isLoading ? '...' : '$resolved',
+                        cardBg: cardBg,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        isDark: isDark,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -272,29 +288,35 @@ class _GovProfilePageState extends State<GovProfilePage> {
             const SizedBox(height: 12),
 
             // ── In Progress Circle Block ──
-            _buildProgressCircleBlock(
-              title: 'In Progress',
-              subtitle: 'Reports that are being processed and being addressed',
-              count: inProgress,
-              total: total,
-              cardBg: cardBg,
-              textColor: textColor,
-              subtextColor: subtextColor,
-              isDark: isDark,
+            GestureDetector(
+              onTap: () => _navigateToStatus('In Progress'),
+              child: _buildProgressCircleBlock(
+                title: 'In Progress',
+                subtitle: 'Reports that are being processed and being addressed',
+                count: inProgress,
+                total: total,
+                cardBg: cardBg,
+                textColor: textColor,
+                subtextColor: subtextColor,
+                isDark: isDark,
+              ),
             ),
 
             const SizedBox(height: 12),
 
             // ── Pending Circle Block ──
-            _buildProgressCircleBlock(
-              title: 'Pending',
-              subtitle: 'Reports that still haven\'t been addressed by the authorities yet',
-              count: pending,
-              total: total,
-              cardBg: cardBg,
-              textColor: textColor,
-              subtextColor: subtextColor,
-              isDark: isDark,
+            GestureDetector(
+              onTap: () => _navigateToStatus('Pending'),
+              child: _buildProgressCircleBlock(
+                title: 'Pending',
+                subtitle: 'Reports that still haven\'t been addressed by the authorities yet',
+                count: pending,
+                total: total,
+                cardBg: cardBg,
+                textColor: textColor,
+                subtextColor: subtextColor,
+                isDark: isDark,
+              ),
             ),
 
             const SizedBox(height: 24),
