@@ -20,12 +20,23 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
   static const Color _amber = Color(0xFFF9A825);
   static const Color _darkBg = Color(0xFF1A1A10);
   static const Color _cardBg = Color(0xFF2A2A1C);
+  static const Color _fieldBg = Color(0xFF33331F);
+  static const Color _fieldBorder = Color(0xFF4A4A30);
+  static const Color _hintColor = Color(0xFF8A8A70);
 
   // ─── State ────────────────────────────────────────────────
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
   File? _profileImage;
 
   @override
   void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -123,57 +134,115 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Title ──
-              const Text(
-                'Complete Profile',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -0.3,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Title ──
+                const Text(
+                  'Complete Profile',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 36),
+                const SizedBox(height: 36),
 
-              // ── Profile Image ──
-              _buildProfileImage(),
+                // ── Profile Image ──
+                _buildProfileImage(),
 
-              const SizedBox(height: 40),
+                const SizedBox(height: 40),
 
-              // ── Temporary nav to home (will be replaced) ──
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const HomeControllerPage()),
-                    );
+                // ── First Name ──
+                _buildTextField(
+                  controller: _firstNameController,
+                  hint: 'First Name',
+                  icon: Icons.person_outline,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'First name is required';
+                    }
+                    if (v.trim().length < 2) {
+                      return 'Must be at least 2 characters';
+                    }
+                    return null;
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _amber,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                ),
+                const SizedBox(height: 16),
+
+                // ── Last Name ──
+                _buildTextField(
+                  controller: _lastNameController,
+                  hint: 'Last Name',
+                  icon: Icons.person_outline,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Last name is required';
+                    }
+                    if (v.trim().length < 2) {
+                      return 'Must be at least 2 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // ── Phone Number ──
+                _buildTextField(
+                  controller: _phoneController,
+                  hint: 'Phone Number',
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Phone number is required';
+                    }
+                    final cleaned =
+                        v.trim().replaceAll(RegExp(r'[\s\-()]'), '');
+                    if (cleaned.length < 9 || cleaned.length > 15) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 40),
+
+                // ── Temporary nav to home (will be replaced) ──
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (!_formKey.currentState!.validate()) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const HomeControllerPage()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _amber,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Finish Setup',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
+                    child: const Text(
+                      'Finish Setup',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -235,6 +304,56 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ─── Text Field Builder ──────────────────────────────────
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: _hintColor, fontSize: 16),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 12),
+          child: Icon(icon, color: _hintColor, size: 22),
+        ),
+        filled: true,
+        fillColor: _fieldBg,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: _fieldBorder, width: 1.2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: _fieldBorder, width: 1.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _amber, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.8),
+        ),
+        errorStyle: const TextStyle(color: Colors.redAccent),
       ),
     );
   }
