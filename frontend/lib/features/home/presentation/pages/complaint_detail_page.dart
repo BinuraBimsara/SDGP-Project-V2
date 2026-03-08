@@ -1209,7 +1209,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Icon(Icons.location_on_rounded, color: accent, size: 16),
+                const Icon(Icons.location_on_rounded, color: accent, size: 16),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
