@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -199,10 +201,27 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (!mounted) return;
 
-    await showDialog(
+    await showGeneralDialog(
       context: context,
-      barrierColor: Colors.black54,
-      builder: (context) {
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withAlpha(80),
+      transitionDuration: const Duration(milliseconds: 250),
+      transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
+        final curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: anim,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved),
+              child: dialogChild,
+            ),
+          ),
+        );
+      },
+      pageBuilder: (ctx, anim, secondaryAnim) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Center(
