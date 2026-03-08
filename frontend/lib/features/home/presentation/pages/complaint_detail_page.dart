@@ -760,6 +760,15 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                             _complaint.status,
                                             _getStatusColor(_complaint.status),
                                           ),
+                                          if (_complaint.distanceInMeters !=
+                                                  null &&
+                                              _complaint.distanceInMeters !=
+                                                  double.maxFinite)
+                                            _buildBadge(
+                                              _formatDistance(
+                                                  _complaint.distanceInMeters!),
+                                              const Color(0xFF607D8B),
+                                            ),
                                         ],
                                       ),
                                     ],
@@ -1200,7 +1209,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Icon(Icons.location_on_rounded, color: accent, size: 16),
+                const Icon(Icons.location_on_rounded, color: accent, size: 16),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -1575,6 +1584,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         ),
       ),
     );
+  }
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m away';
+    }
+    final km = meters / 1000;
+    return '${km.toStringAsFixed(1)} km away';
   }
 
   Color _getCategoryColor(String category) {

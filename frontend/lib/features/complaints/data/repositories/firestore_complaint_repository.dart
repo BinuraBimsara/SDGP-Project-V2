@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -39,7 +41,46 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           .toList();
     }
 
+    // Calculate distance from user and sort closest-first
+    if (userLat != null && userLng != null) {
+      complaints = complaints.map((c) {
+        if (c.latitude != null && c.longitude != null) {
+          final meters = _haversineMeters(
+            userLat,
+            userLng,
+            c.latitude!,
+            c.longitude!,
+          );
+          return c.copyWith(distanceInMeters: meters);
+        }
+        return c.copyWith(distanceInMeters: double.maxFinite);
+      }).toList();
+
+      complaints.sort((a, b) {
+        final dA = a.distanceInMeters ?? double.maxFinite;
+        final dB = b.distanceInMeters ?? double.maxFinite;
+        return dA.compareTo(dB);
+      });
+    }
+
     return complaints;
+  }
+
+  /// Haversine formula — returns straight-line distance in meters.
+  static double _haversineMeters(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const p = 0.017453292519943295; // pi / 180
+    final a = 0.5 -
+        math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) *
+            math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) /
+            2;
+    return 12742000 * math.asin(math.sqrt(a)); // 2 * R in meters
   }
 
   @override
