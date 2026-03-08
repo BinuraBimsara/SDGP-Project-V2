@@ -384,6 +384,63 @@ class _ProfilePageState extends State<ProfilePage> {
                                 return null;
                               },
                             ),
+                            const SizedBox(height: 10),
+
+                            // ── Phone Number ──
+                            TextFormField(
+                              controller: _editPhoneController,
+                              keyboardType: TextInputType.phone,
+                              style: TextStyle(color: textColor, fontSize: 15),
+                              decoration: InputDecoration(
+                                hintText: 'Phone Number',
+                                hintStyle: TextStyle(
+                                  color: isDark ? Colors.white30 : Colors.black26,
+                                  fontSize: 15,
+                                ),
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 12, right: 10),
+                                  child: Icon(Icons.phone_outlined, color: accent, size: 20),
+                                ),
+                                prefixIconConstraints:
+                                    const BoxConstraints(minWidth: 42, minHeight: 0),
+                                filled: true,
+                                fillColor: fieldBg,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: accent, width: 1.5),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Phone number is required';
+                                }
+                                final cleaned =
+                                    v.trim().replaceAll(RegExp(r'[\s\-()]'), '');
+                                if (cleaned.length < 9 ||
+                                    cleaned.length > 15) {
+                                  return 'Enter a valid phone number';
+                                }
+                                return null;
+                              },
+                            ),
                             const SizedBox(height: 24),
 
                             // ── Save button ──
@@ -422,6 +479,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                             'firstName': firstName,
                                             'lastName': lastName,
                                             'displayName': fullName,
+                                            'phone': _editPhoneController
+                                                .text
+                                                .trim(),
                                           }, SetOptions(merge: true));
 
                                           if (!context.mounted) return;
