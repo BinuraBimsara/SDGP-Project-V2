@@ -11,7 +11,9 @@ import 'package:spotit/features/home/presentation/widgets/location_picker_screen
 import 'package:spotit/main.dart';
 
 class HomeFeedPage extends StatefulWidget {
-  const HomeFeedPage({super.key});
+  final ScrollController? scrollController;
+
+  const HomeFeedPage({super.key, this.scrollController});
 
   @override
   State<HomeFeedPage> createState() => _HomeFeedPageState();
@@ -511,6 +513,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
 
     if (_complaints.isEmpty) {
       return ListView(
+        controller: widget.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
@@ -553,6 +556,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: ListView.builder(
+        controller: widget.scrollController,
         key: ValueKey(_selectedFilter),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 8, bottom: 16),

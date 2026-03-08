@@ -162,6 +162,24 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     super.dispose();
   }
 
+  /// Pull-to-refresh: reloads comments and complaint data.
+  Future<void> _refreshDetail() async {
+    // Reload comments
+    setState(() => _isLoadingComments = true);
+    await _loadComments();
+    // Also refresh the complaint data (upvote count, status, etc.)
+    try {
+      final updated = await _repository.getComplaintById(_complaint.id);
+      if (updated != null && mounted) {
+        setState(() {
+          _complaint = updated.copyWith(isUpvoted: _hasUpvoted);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error refreshing complaint: $e');
+    }
+  }
+
   void _toggleUpvote() {
     setState(() {
       _hasUpvoted = !_hasUpvoted;
@@ -657,231 +675,241 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         body: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Image(s) — carousel if multiple, single if one
-                    _buildImageSection(inputBg),
+              child: RefreshIndicator(
+                onRefresh: _refreshDetail,
+                color: const Color(0xFFF9A825),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                displacement: 40,
+                strokeWidth: 2.5,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image(s) — carousel if multiple, single if one
+                      _buildImageSection(inputBg),
 
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Title and Badges container
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Title
-                                    Text(
-                                      _complaint.title,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Title and Badges container
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Title
+                                      Text(
+                                        _complaint.title,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    if (_complaint.authorName.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor:
-                                                const Color(0xFFF9A825)
-                                                    .withValues(alpha: 0.2),
-                                            child: Text(
-                                              _complaint.authorName[0]
-                                                  .toUpperCase(),
-                                              style: const TextStyle(
-                                                color: Color(0xFFF9A825),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 11,
+                                      if (_complaint.authorName.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 12,
+                                              backgroundColor:
+                                                  const Color(0xFFF9A825)
+                                                      .withValues(alpha: 0.2),
+                                              child: Text(
+                                                _complaint.authorName[0]
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFFF9A825),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 11,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            _complaint.authorName,
-                                            style: TextStyle(
-                                              color: metaColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              _complaint.authorName,
+                                              style: TextStyle(
+                                                color: metaColor,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
+                                          ],
+                                        ),
+                                      ],
+                                      const SizedBox(height: 12),
+
+                                      // Badges
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        children: [
+                                          _buildBadge(
+                                            _complaint.category,
+                                            _getCategoryColor(
+                                                _complaint.category),
+                                          ),
+                                          _buildBadge(
+                                            _complaint.status,
+                                            _getStatusColor(_complaint.status),
                                           ),
                                         ],
                                       ),
                                     ],
-                                    const SizedBox(height: 12),
-
-                                    // Badges
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: [
-                                        _buildBadge(
-                                          _complaint.category,
-                                          _getCategoryColor(
-                                              _complaint.category),
-                                        ),
-                                        _buildBadge(
-                                          _complaint.status,
-                                          _getStatusColor(_complaint.status),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
+                                const SizedBox(width: 16),
 
-                              // Vertical Upvote Pill
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _isOfficial ? null : _toggleUpvote,
-                                    behavior: HitTestBehavior.opaque,
-                                    child: ScaleTransition(
-                                      scale: _upvoteBounceAnimation,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _hasUpvoted
-                                              ? const Color(0xFFF9A825)
-                                                  .withValues(alpha: 0.15)
-                                              : isDark
-                                                  ? const Color(0xFF1C2733)
-                                                  : const Color(0xFFE8EDF2),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
+                                // Vertical Upvote Pill
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _isOfficial ? null : _toggleUpvote,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: ScaleTransition(
+                                        scale: _upvoteBounceAnimation,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color: _hasUpvoted
                                                 ? const Color(0xFFF9A825)
-                                                    .withValues(alpha: 0.4)
+                                                    .withValues(alpha: 0.15)
                                                 : isDark
-                                                    ? Colors.white
-                                                        .withValues(alpha: 0.08)
-                                                    : Colors.black.withValues(
-                                                        alpha: 0.08),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.arrow_upward_rounded,
+                                                    ? const Color(0xFF1C2733)
+                                                    : const Color(0xFFE8EDF2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
                                               color: _hasUpvoted
                                                   ? const Color(0xFFF9A825)
+                                                      .withValues(alpha: 0.4)
                                                   : isDark
                                                       ? Colors.white.withValues(
-                                                          alpha: 0.7)
-                                                      : Colors.black54,
-                                              size: 24,
+                                                          alpha: 0.08)
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.08),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${_complaint.upvoteCount}',
-                                              style: TextStyle(
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.arrow_upward_rounded,
                                                 color: _hasUpvoted
                                                     ? const Color(0xFFF9A825)
                                                     : isDark
                                                         ? Colors.white
                                                             .withValues(
-                                                                alpha: 0.8)
-                                                        : Colors.black87,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
+                                                                alpha: 0.7)
+                                                        : Colors.black54,
+                                                size: 24,
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${_complaint.upvoteCount}',
+                                                style: TextStyle(
+                                                  color: _hasUpvoted
+                                                      ? const Color(0xFFF9A825)
+                                                      : isDark
+                                                          ? Colors.white
+                                                              .withValues(
+                                                                  alpha: 0.8)
+                                                          : Colors.black87,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Official-only location section
-                          if (_isOfficial)
-                            _buildOfficialLocationSection(isDark, textColor),
-
-                          // Comments section header
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                color: textColor,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Comments (${_comments.length})',
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Comments list
-                          if (_isLoadingComments)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFFF9A825),
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
-                          else if (_comments.isEmpty)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'No comments yet. Be the first to comment!',
-                                  style: TextStyle(
-                                    color: metaColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            ..._buildCommentThread(
-                              _comments,
-                              isDark,
-                              textColor,
-                              0,
+                              ],
                             ),
-                        ],
+                            const SizedBox(height: 16),
+
+                            // Official-only location section
+                            if (_isOfficial)
+                              _buildOfficialLocationSection(isDark, textColor),
+
+                            // Comments section header
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  color: textColor,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Comments (${_comments.length})',
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Comments list
+                            if (_isLoadingComments)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFF9A825),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            else if (_comments.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'No comments yet. Be the first to comment!',
+                                    style: TextStyle(
+                                      color: metaColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._buildCommentThread(
+                                _comments,
+                                isDark,
+                                textColor,
+                                0,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1178,9 +1206,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                   child: Text(
                     _complaint.locationName,
                     style: TextStyle(
-                      color: isDark
-                          ? Colors.white.withAlpha(180)
-                          : Colors.black54,
+                      color:
+                          isDark ? Colors.white.withAlpha(180) : Colors.black54,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1340,9 +1367,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isOfficialComment
-              ? (isDark
-                  ? const Color(0xFF1B3A1B)
-                  : const Color(0xFFE8F5E9))
+              ? (isDark ? const Color(0xFF1B3A1B) : const Color(0xFFE8F5E9))
               : (isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5)),
           borderRadius: BorderRadius.circular(12),
           border: isOfficialComment
@@ -1390,9 +1415,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                         child: Text(
                           comment.author,
                           style: TextStyle(
-                            color: isOfficialComment
-                                ? officialAccent
-                                : textColor,
+                            color:
+                                isOfficialComment ? officialAccent : textColor,
                             fontWeight: isOfficialComment
                                 ? FontWeight.w800
                                 : FontWeight.w600,
@@ -1440,12 +1464,15 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               comment.text,
               style: TextStyle(
                 color: isOfficialComment
-                    ? (isDark ? const Color(0xFFA5D6A7) : const Color(0xFF1B5E20))
+                    ? (isDark
+                        ? const Color(0xFFA5D6A7)
+                        : const Color(0xFF1B5E20))
                     : (isDark
                         ? Colors.white.withValues(alpha: 0.75)
                         : Colors.black54),
                 fontSize: 13,
-                fontWeight: isOfficialComment ? FontWeight.w700 : FontWeight.normal,
+                fontWeight:
+                    isOfficialComment ? FontWeight.w700 : FontWeight.normal,
                 height: 1.4,
               ),
             ),
