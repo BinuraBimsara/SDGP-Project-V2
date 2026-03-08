@@ -25,6 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // Edit profile controllers
   final _editFirstNameController = TextEditingController();
   final _editLastNameController = TextEditingController();
+  final _editPhoneController = TextEditingController();
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     _editFirstNameController.dispose();
     _editLastNameController.dispose();
+    _editPhoneController.dispose();
     super.dispose();
   }
 
