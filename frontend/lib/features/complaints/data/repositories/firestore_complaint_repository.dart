@@ -44,6 +44,23 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     return complaints;
   }
 
+  /// Haversine formula — returns straight-line distance in meters.
+  static double _haversineMeters(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const p = 0.017453292519943295; // pi / 180
+    final a = 0.5 -
+        math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) *
+            math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) /
+            2;
+    return 12742000 * math.asin(math.sqrt(a)); // 2 * R in meters
+  }
+
   @override
   Future<Complaint?> getComplaintById(String id) async {
     final doc = await _complaintsRef.doc(id).get();
