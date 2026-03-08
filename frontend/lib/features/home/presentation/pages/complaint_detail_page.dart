@@ -760,6 +760,13 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                             _complaint.status,
                                             _getStatusColor(_complaint.status),
                                           ),
+                                          if (_complaint.distanceInMeters !=
+                                              null)
+                                            _buildBadge(
+                                              _formatDistance(
+                                                  _complaint.distanceInMeters!),
+                                              const Color(0xFF607D8B),
+                                            ),
                                         ],
                                       ),
                                     ],
