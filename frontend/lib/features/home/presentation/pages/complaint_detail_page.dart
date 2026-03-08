@@ -761,7 +761,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                             _getStatusColor(_complaint.status),
                                           ),
                                           if (_complaint.distanceInMeters !=
-                                              null)
+                                                  null &&
+                                              _complaint.distanceInMeters !=
+                                                  double.maxFinite)
                                             _buildBadge(
                                               _formatDistance(
                                                   _complaint.distanceInMeters!),
