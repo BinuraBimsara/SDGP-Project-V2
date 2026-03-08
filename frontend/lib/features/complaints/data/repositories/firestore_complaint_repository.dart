@@ -53,7 +53,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           );
           return c.copyWith(distanceInMeters: meters);
         }
-        return c;
+        return c.copyWith(distanceInMeters: double.maxFinite);
       }).toList();
 
       complaints.sort((a, b) {
