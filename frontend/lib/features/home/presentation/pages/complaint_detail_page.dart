@@ -1577,6 +1577,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     );
   }
 
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m away';
+    }
+    final km = meters / 1000;
+    return '${km.toStringAsFixed(1)} km away';
+  }
+
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'waste':
