@@ -252,75 +252,26 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 24),
 
                             // ── Email (read-only) ──
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              decoration: BoxDecoration(
-                                color: fieldBg,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.email_outlined,
-                                      color: isDark ? Colors.white38 : Colors.black26,
-                                      size: 20),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Text(
-                                      user.email ?? '',
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white38 : Colors.black38,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ),
-                                  Icon(Icons.lock_outline,
-                                      color: isDark ? Colors.white24 : Colors.black12, size: 16),
-                                ],
-                              ),
+                            _buildEditRow(
+                              icon: Icons.email_outlined,
+                              label: user.email ?? '',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              isReadOnly: true,
+                              accent: accent,
+                              isDark: isDark,
                             ),
                             const SizedBox(height: 10),
 
                             // ── First Name ──
-                            TextFormField(
+                            _buildEditField(
                               controller: _editFirstNameController,
-                              style: TextStyle(color: textColor, fontSize: 15),
-                              decoration: InputDecoration(
-                                hintText: 'First Name',
-                                hintStyle: TextStyle(
-                                  color: isDark ? Colors.white30 : Colors.black26,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Padding(
-                                  padding: const EdgeInsets.only(left: 12, right: 10),
-                                  child: Icon(Icons.person_outline, color: accent, size: 20),
-                                ),
-                                prefixIconConstraints:
-                                    const BoxConstraints(minWidth: 42, minHeight: 0),
-                                filled: true,
-                                fillColor: fieldBg,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: accent, width: 1.5),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                                ),
-                              ),
+                              icon: Icons.person_outline,
+                              hint: 'First Name',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
                                   return 'First name is required';
@@ -334,46 +285,14 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 10),
 
                             // ── Last Name ──
-                            TextFormField(
+                            _buildEditField(
                               controller: _editLastNameController,
-                              style: TextStyle(color: textColor, fontSize: 15),
-                              decoration: InputDecoration(
-                                hintText: 'Last Name',
-                                hintStyle: TextStyle(
-                                  color: isDark ? Colors.white30 : Colors.black26,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Padding(
-                                  padding: const EdgeInsets.only(left: 12, right: 10),
-                                  child: Icon(Icons.person_outline, color: accent, size: 20),
-                                ),
-                                prefixIconConstraints:
-                                    const BoxConstraints(minWidth: 42, minHeight: 0),
-                                filled: true,
-                                fillColor: fieldBg,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: accent, width: 1.5),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                                ),
-                              ),
+                              icon: Icons.person_outline,
+                              hint: 'Last Name',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
                                   return 'Last name is required';
@@ -387,47 +306,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 10),
 
                             // ── Phone Number ──
-                            TextFormField(
+                            _buildEditField(
                               controller: _editPhoneController,
+                              icon: Icons.phone_outlined,
+                              hint: 'Phone Number',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
                               keyboardType: TextInputType.phone,
-                              style: TextStyle(color: textColor, fontSize: 15),
-                              decoration: InputDecoration(
-                                hintText: 'Phone Number',
-                                hintStyle: TextStyle(
-                                  color: isDark ? Colors.white30 : Colors.black26,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Padding(
-                                  padding: const EdgeInsets.only(left: 12, right: 10),
-                                  child: Icon(Icons.phone_outlined, color: accent, size: 20),
-                                ),
-                                prefixIconConstraints:
-                                    const BoxConstraints(minWidth: 42, minHeight: 0),
-                                filled: true,
-                                fillColor: fieldBg,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide.none,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: accent, width: 1.5),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                                ),
-                              ),
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
                                   return 'Phone number is required';
@@ -569,6 +456,106 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         );
       },
+    );
+  }
+
+  /// Read-only row for email display.
+  Widget _buildEditRow({
+    required IconData icon,
+    required String label,
+    required Color fieldBg,
+    required Color textColor,
+    required Color accent,
+    required bool isDark,
+    bool isReadOnly = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: fieldBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon,
+              color: isReadOnly
+                  ? (isDark ? Colors.white38 : Colors.black26)
+                  : accent,
+              size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isReadOnly
+                    ? (isDark ? Colors.white38 : Colors.black38)
+                    : textColor,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          if (isReadOnly)
+            Icon(Icons.lock_outline,
+                color: isDark ? Colors.white24 : Colors.black12, size: 16),
+        ],
+      ),
+    );
+  }
+
+  /// Editable text field row matching the dialog card style.
+  Widget _buildEditField({
+    required TextEditingController controller,
+    required IconData icon,
+    required String hint,
+    required Color fieldBg,
+    required Color textColor,
+    required Color accent,
+    required bool isDark,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: textColor, fontSize: 15),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          color: isDark ? Colors.white30 : Colors.black26,
+          fontSize: 15,
+        ),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 10),
+          child: Icon(icon, color: accent, size: 20),
+        ),
+        prefixIconConstraints:
+            const BoxConstraints(minWidth: 42, minHeight: 0),
+        filled: true,
+        fillColor: fieldBg,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+      ),
     );
   }
 
