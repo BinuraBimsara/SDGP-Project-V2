@@ -55,6 +55,12 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         }
         return c;
       }).toList();
+
+      complaints.sort((a, b) {
+        final dA = a.distanceInMeters ?? double.maxFinite;
+        final dB = b.distanceInMeters ?? double.maxFinite;
+        return dA.compareTo(dB);
+      });
     }
 
     return complaints;
