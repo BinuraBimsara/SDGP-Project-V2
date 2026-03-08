@@ -9,8 +9,6 @@ enum ReportSortMode {
   highestPriority,
   lowestPriority,
   latest,
-  mostUpvoted,
-  mostDownvoted,
 }
 
 /// Page that shows all reports under a specific category.
@@ -79,12 +77,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
       case ReportSortMode.latest:
         _complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         break;
-      case ReportSortMode.mostUpvoted:
-        _complaints.sort((a, b) => b.upvoteCount.compareTo(a.upvoteCount));
-        break;
-      case ReportSortMode.mostDownvoted:
-        _complaints.sort((a, b) => a.upvoteCount.compareTo(b.upvoteCount));
-        break;
     }
   }
 
@@ -96,10 +88,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
         return 'Lowest Priority';
       case ReportSortMode.latest:
         return 'Latest';
-      case ReportSortMode.mostUpvoted:
-        return 'Most Upvoted';
-      case ReportSortMode.mostDownvoted:
-        return 'Most Downvoted';
     }
   }
 
@@ -111,10 +99,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
         return Icons.arrow_downward;
       case ReportSortMode.latest:
         return Icons.access_time;
-      case ReportSortMode.mostUpvoted:
-        return Icons.thumb_up_outlined;
-      case ReportSortMode.mostDownvoted:
-        return Icons.thumb_down_outlined;
     }
   }
 

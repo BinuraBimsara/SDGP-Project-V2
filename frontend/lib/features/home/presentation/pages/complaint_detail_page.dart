@@ -15,6 +15,7 @@ class Comment {
   final String text;
   final DateTime timestamp;
   final String? parentCommentId;
+  final bool isOfficial;
   final List<Comment> replies;
 
   Comment({
@@ -24,6 +25,7 @@ class Comment {
     required this.text,
     required this.timestamp,
     this.parentCommentId,
+    this.isOfficial = false,
     List<Comment>? replies,
   }) : replies = replies ?? [];
 }
@@ -123,6 +125,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 text: data['text'] as String,
                 timestamp: data['timestamp'] as DateTime,
                 parentCommentId: data['parentCommentId'] as String?,
+                isOfficial: data['isOfficial'] as bool? ?? false,
               ))
           .toList();
 
@@ -287,6 +290,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       text,
       authorId: authorId,
       parentCommentId: parentId,
+      isOfficial: _isOfficial,
     )
         .then((newCount) {
       setState(() {
@@ -742,7 +746,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   GestureDetector(
-                                    onTap: _toggleUpvote,
+                                    onTap: _isOfficial ? null : _toggleUpvote,
                                     behavior: HitTestBehavior.opaque,
                                     child: ScaleTransition(
                                       scale: _upvoteBounceAnimation,
@@ -1325,6 +1329,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     final isOwn = currentUid.isNotEmpty && currentUid == comment.authorId;
     // Max indentation depth of 4 levels
     final leftPad = (depth.clamp(0, 4)) * 24.0;
+    final isOfficialComment = comment.isOfficial;
+    // Official comment accent: a muted teal-green that works on both themes
+    const officialAccent = Color(0xFF2E7D32);
 
     return GestureDetector(
       onLongPress: isOwn ? () => _confirmDeleteComment(comment) : null,
@@ -1332,16 +1339,25 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         margin: EdgeInsets.only(bottom: 8, left: leftPad),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
+          color: isOfficialComment
+              ? (isDark
+                  ? const Color(0xFF1B3A1B)
+                  : const Color(0xFFE8F5E9))
+              : (isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5)),
           borderRadius: BorderRadius.circular(12),
-          border: depth > 0
-              ? Border(
-                  left: BorderSide(
-                    color: const Color(0xFFF9A825).withValues(alpha: 0.4),
-                    width: 2,
-                  ),
+          border: isOfficialComment
+              ? Border.all(
+                  color: officialAccent.withValues(alpha: 0.4),
+                  width: 1.5,
                 )
-              : null,
+              : depth > 0
+                  ? Border(
+                      left: BorderSide(
+                        color: const Color(0xFFF9A825).withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                    )
+                  : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1350,14 +1366,17 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor:
-                      const Color(0xFFF9A825).withValues(alpha: 0.2),
+                  backgroundColor: isOfficialComment
+                      ? officialAccent.withValues(alpha: 0.2)
+                      : const Color(0xFFF9A825).withValues(alpha: 0.2),
                   child: Text(
                     comment.author.isNotEmpty
                         ? comment.author[0].toUpperCase()
                         : '?',
-                    style: const TextStyle(
-                      color: Color(0xFFF9A825),
+                    style: TextStyle(
+                      color: isOfficialComment
+                          ? officialAccent
+                          : const Color(0xFFF9A825),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1365,14 +1384,44 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    comment.author,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          comment.author,
+                          style: TextStyle(
+                            color: isOfficialComment
+                                ? officialAccent
+                                : textColor,
+                            fontWeight: isOfficialComment
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isOfficialComment) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: officialAccent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Official',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Text(
@@ -1390,10 +1439,13 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             Text(
               comment.text,
               style: TextStyle(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.75)
-                    : Colors.black54,
+                color: isOfficialComment
+                    ? (isDark ? const Color(0xFFA5D6A7) : const Color(0xFF1B5E20))
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.75)
+                        : Colors.black54),
                 fontSize: 13,
+                fontWeight: isOfficialComment ? FontWeight.w700 : FontWeight.normal,
                 height: 1.4,
               ),
             ),

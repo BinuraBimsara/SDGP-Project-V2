@@ -203,7 +203,7 @@ class _GovProfilePageState extends State<GovProfilePage> {
                         // Official badge (replaces star rating from screenshot)
                         Row(
                           children: [
-                            Icon(Icons.admin_panel_settings_outlined,
+                            const Icon(Icons.admin_panel_settings_outlined,
                                 color: accent, size: 16),
                             const SizedBox(width: 4),
                             Text(
