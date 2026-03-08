@@ -251,6 +251,35 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const SizedBox(height: 24),
 
+                            // ── Email (read-only) ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: fieldBg,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.email_outlined,
+                                      color: isDark ? Colors.white38 : Colors.black26,
+                                      size: 20),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      user.email ?? '',
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white38 : Colors.black38,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(Icons.lock_outline,
+                                      color: isDark ? Colors.white24 : Colors.black12, size: 16),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+
                             // ── First Name ──
                             TextFormField(
                               controller: _editFirstNameController,
