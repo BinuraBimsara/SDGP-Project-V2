@@ -41,7 +41,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           .toList();
     }
 
-    // Calculate distance from user for each complaint
+    // Calculate distance from user and sort closest-first
     if (userLat != null && userLng != null) {
       complaints = complaints.map((c) {
         if (c.latitude != null && c.longitude != null) {
