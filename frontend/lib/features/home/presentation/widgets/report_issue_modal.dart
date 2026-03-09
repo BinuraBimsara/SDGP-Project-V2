@@ -618,18 +618,19 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Header: New Report ──
   Widget _buildHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: _borderColor),
+          bottom: BorderSide(color: _borderColor(isDark)),
         ),
       ),
-      child: const Text(
+      child: Text(
         'New Report',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: _textPrimary,
+          color: _textPrimary(isDark),
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -639,10 +640,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Section title ──
   Widget _sectionTitle(String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Text(
       text,
-      style: const TextStyle(
-        color: _textPrimary,
+      style: TextStyle(
+        color: _textPrimary(isDark),
         fontSize: 15,
         fontWeight: FontWeight.w700,
       ),
