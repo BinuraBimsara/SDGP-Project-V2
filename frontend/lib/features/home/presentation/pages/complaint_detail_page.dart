@@ -30,6 +30,10 @@ class Comment {
   }) : replies = replies ?? [];
 }
 
+enum ComplaintDetailResult {
+  deleted,
+}
+
 class ComplaintDetailPage extends StatefulWidget {
   final Complaint complaint;
   final bool isOfficial;
