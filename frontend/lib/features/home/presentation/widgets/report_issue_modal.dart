@@ -13,39 +13,126 @@ import 'package:spotit/main.dart';
 
 // ─── Helper: show the modal ─────────────────────────────────────────────────
 /// Call this from anywhere (e.g. FAB onPressed) to display the Report Issue
-/// dialog with a blurred background.
+/// dialog with a smooth OriginOS-style spring animation.
 void showReportIssueModal(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withAlpha(80),
-    builder: (_) => const _BlurredReportDialog(),
-  );
+  Navigator.of(context).push(_ReportIssueRoute());
 }
 
-// ─── Blurred backdrop wrapper ────────────────────────────────────────────────
-class _BlurredReportDialog extends StatelessWidget {
-  const _BlurredReportDialog();
+// ─── Custom route with OriginOS-style spring animation ───────────────────────
+
+class _ReportIssueRoute extends PageRouteBuilder {
+  _ReportIssueRoute()
+      : super(
+          opaque: false,
+          barrierDismissible: true,
+          barrierColor: Colors.transparent,
+          transitionDuration: const Duration(milliseconds: 550),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return _AnimatedReportDialog(animation: animation);
+          },
+        );
+}
+
+// ─── Animated blurred backdrop + modal ───────────────────────────────────────
+
+class _AnimatedReportDialog extends StatelessWidget {
+  final Animation<double> animation;
+
+  const _AnimatedReportDialog({required this.animation});
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 420,
-              maxHeight: MediaQuery.of(context).size.height * 0.90,
-            ),
-            child: const Material(
-              color: Colors.transparent,
-              child: ReportIssueModal(),
+
+    // ── Spring-style curved animation ──
+    final curvedAnimation = CurvedAnimation(
+      parent: animation,
+      curve: const _OriginOSCurve(),
+      reverseCurve: Curves.easeInQuart,
+    );
+
+    // ── Blur: 0 → 12 ──
+    final blurAnimation = Tween<double>(begin: 0, end: 12).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Background dim: transparent → semi-black ──
+    final dimAnimation = ColorTween(
+      begin: Colors.transparent,
+      end: Colors.black.withAlpha(90),
+    ).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Scale: starts slightly smaller, springs to 1.0 ──
+    final scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnimation);
+
+    // ── Fade ──
+    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Slide up from bottom ──
+    final slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curvedAnimation);
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: blurAnimation.value,
+            sigmaY: blurAnimation.value,
+          ),
+          child: Container(
+            color: dimAnimation.value,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () {}, // absorb taps on the modal itself
+                    child: FadeTransition(
+                      opacity: fadeAnimation,
+                      child: SlideTransition(
+                        position: slideAnimation,
+                        child: ScaleTransition(
+                          scale: scaleAnimation,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: 420,
+                              maxHeight:
+                                  MediaQuery.of(context).size.height * 0.90,
+                            ),
+                            child: const Material(
+                              color: Colors.transparent,
+                              child: ReportIssueModal(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
