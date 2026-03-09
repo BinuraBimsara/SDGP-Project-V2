@@ -917,3 +917,19 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     );
   }
 }
+
+// ─── OriginOS-style spring curve ─────────────────────────────────────────────
+/// A custom curve that overshoots slightly then settles, mimicking the fluid
+/// spring animation seen in OriginOS app launches.
+class _OriginOSCurve extends Curve {
+  const _OriginOSCurve();
+
+  @override
+  double transformInternal(double t) {
+    // Spring-like formula: overshoots to ~1.02 then settles to 1.0
+    // Using a damped spring: 1 - e^(-6t) * cos(2.5πt)
+    final double dampedSpring =
+        1.0 - math.exp(-6.0 * t) * math.cos(2.5 * math.pi * t);
+    return dampedSpring;
+  }
+}
