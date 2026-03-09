@@ -679,14 +679,15 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     required String label,
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: _fieldFill,
+          color: _fieldFill(isDark),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _borderColor),
+          border: Border.all(color: _borderColor(isDark)),
         ),
         child: Column(
           children: [
@@ -695,7 +696,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             Text(
               label,
               style: TextStyle(
-                color: _textSecondary,
+                color: _textSecondary(isDark),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
