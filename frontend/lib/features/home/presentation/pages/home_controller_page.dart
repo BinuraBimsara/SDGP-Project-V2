@@ -91,6 +91,11 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     });
   }
 
+  /// Called when a complaint is deleted from My Reports detail view.
+  void _handleComplaintDeletedFromReports() {
+    _switchTab(0);
+  }
+
   Widget _currentPage() {
     switch (_currentNavIndex) {
       case 0:
@@ -101,7 +106,10 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       case 1:
         return NotificationsPage(key: _pageKey);
       case 2:
-        return MyReportsPage(key: _pageKey);
+        return MyReportsPage(
+          key: _pageKey,
+          onComplaintDeleted: _handleComplaintDeletedFromReports,
+        );
       case 3:
         return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
       default:

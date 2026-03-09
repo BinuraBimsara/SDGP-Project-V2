@@ -30,6 +30,10 @@ class Comment {
   }) : replies = replies ?? [];
 }
 
+enum ComplaintDetailResult {
+  deleted,
+}
+
 class ComplaintDetailPage extends StatefulWidget {
   final Complaint complaint;
   final bool isOfficial;
@@ -261,16 +265,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComplaint(_complaint.id);
       if (!mounted) return;
-      Navigator.pop(context, 'deleted');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Complaint deleted successfully'),
-          backgroundColor: const Color(0xFFF9A825),
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      Navigator.pop(context, ComplaintDetailResult.deleted);
     } catch (e) {
       debugPrint('Error deleting complaint: $e');
       if (mounted) {

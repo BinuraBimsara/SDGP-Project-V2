@@ -8,7 +8,9 @@ import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
 import 'package:spotit/main.dart';
 
 class MyReportsPage extends StatefulWidget {
-  const MyReportsPage({super.key});
+  final VoidCallback? onComplaintDeleted;
+
+  const MyReportsPage({super.key, this.onComplaintDeleted});
 
   @override
   State<MyReportsPage> createState() => _MyReportsPageState();
@@ -457,13 +459,18 @@ class _MyReportsPageState extends State<MyReportsPage> {
               _repository.toggleUpvote(_filteredComplaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push<Complaint>(
+              final result = await Navigator.push<ComplaintDetailResult>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ComplaintDetailPage(
                       complaint: _filteredComplaints[index]),
                 ),
               );
+              if (!mounted) return;
+              if (result == ComplaintDetailResult.deleted) {
+                widget.onComplaintDeleted?.call();
+                return;
+              }
               if (result != null) {
                 _loadMyReports();
               }
