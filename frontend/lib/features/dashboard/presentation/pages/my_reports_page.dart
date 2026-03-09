@@ -459,13 +459,18 @@ class _MyReportsPageState extends State<MyReportsPage> {
               _repository.toggleUpvote(_filteredComplaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push<Complaint>(
+              final result = await Navigator.push<ComplaintDetailResult>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ComplaintDetailPage(
                       complaint: _filteredComplaints[index]),
                 ),
               );
+              if (!mounted) return;
+              if (result == ComplaintDetailResult.deleted) {
+                widget.onComplaintDeleted?.call();
+                return;
+              }
               if (result != null) {
                 _loadMyReports();
               }
