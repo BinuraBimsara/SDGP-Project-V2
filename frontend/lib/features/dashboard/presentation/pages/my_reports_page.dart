@@ -8,7 +8,9 @@ import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
 import 'package:spotit/main.dart';
 
 class MyReportsPage extends StatefulWidget {
-  const MyReportsPage({super.key});
+  final VoidCallback? onComplaintDeleted;
+
+  const MyReportsPage({super.key, this.onComplaintDeleted});
 
   @override
   State<MyReportsPage> createState() => _MyReportsPageState();
