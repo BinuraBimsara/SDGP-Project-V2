@@ -6,7 +6,7 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest, onCall} = require("firebase-functions/v2/https");
+const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
 const {onDocumentCreated, onDocumentUpdated} =
   require("firebase-functions/v2/firestore");
@@ -22,6 +22,7 @@ const REPORT_CATEGORIES = ["Road", "Infrastructure", "Waste", "Other"];
 const REPORT_STATUSES = ["Pending", "In Progress", "Resolved"];
 const MAX_REPORT_IMAGES = 5;
 const MAX_REPORT_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_COMMENT_LENGTH = 1000;
 
 function validateReportDraft(payload) {
   const errors = [];
@@ -298,17 +299,17 @@ exports.onComplaintUpdated = onDocumentUpdated(
 // -- Toggle upvote (callable) ------------------------------------------------
 // Atomically toggles a user's upvote on a complaint.
 // Maintains a subcollection complaints/{id}/upvotes/{uid}.
-exports.toggleUpvote = onCall(async (request) => {
+exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
   // Require authentication
   if (!request.auth) {
-    throw new Error("You must be signed in to upvote.");
+    throw new HttpsError("unauthenticated", "You must be signed in to upvote.");
   }
 
   const uid = request.auth.uid;
   const {complaintId} = request.data;
 
-  if (!complaintId) {
-    throw new Error("complaintId is required.");
+  if (!complaintId || typeof complaintId !== "string") {
+    throw new HttpsError("invalid-argument", "complaintId is required.");
   }
 
   const complaintRef = db.collection("complaints").doc(complaintId);
@@ -316,6 +317,11 @@ exports.toggleUpvote = onCall(async (request) => {
       .collection("upvotes").doc(uid);
 
   const result = await db.runTransaction(async (tx) => {
+    const complaintSnap = await tx.get(complaintRef);
+    if (!complaintSnap.exists) {
+      throw new HttpsError("not-found", "Complaint not found.");
+    }
+
     const upvoteSnap = await tx.get(upvoteRef);
 
     if (upvoteSnap.exists) {
@@ -348,17 +354,30 @@ exports.toggleUpvote = onCall(async (request) => {
 
 // -- Add comment (callable) --------------------------------------------------
 // Creates a comment document and increments commentCount atomically.
-exports.addComment = onCall(async (request) => {
+exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
   if (!request.auth) {
-    throw new Error("You must be signed in to comment.");
+    throw new HttpsError("unauthenticated", "You must be signed in to comment.");
   }
 
   const uid = request.auth.uid;
-  const {complaintId, text} = request.data;
+  const {complaintId, text, parentCommentId} = request.data;
 
-  if (!complaintId || !text) {
-    throw new Error(
-        "complaintId and text are required.",
+  if (!complaintId || typeof complaintId !== "string") {
+    throw new HttpsError("invalid-argument", "complaintId is required.");
+  }
+
+  if (!text || typeof text !== "string") {
+    throw new HttpsError("invalid-argument", "text is required.");
+  }
+
+  const cleanText = text.trim();
+  if (!cleanText) {
+    throw new HttpsError("invalid-argument", "Comment text cannot be empty.");
+  }
+  if (cleanText.length > MAX_COMMENT_LENGTH) {
+    throw new HttpsError(
+        "invalid-argument",
+        `Comment text must be ${MAX_COMMENT_LENGTH} characters or less.`,
     );
   }
 
@@ -366,19 +385,28 @@ exports.addComment = onCall(async (request) => {
       .collection("complaints").doc(complaintId);
   const commentsRef = complaintRef.collection("comments");
 
+  const complaintSnap = await complaintRef.get();
+  if (!complaintSnap.exists) {
+    throw new HttpsError("not-found", "Complaint not found.");
+  }
+
   // Fetch author display name from user profile
   const userSnap = await db
       .collection("users").doc(uid).get();
   const authorName = userSnap.exists ?
     userSnap.data().displayName || "Anonymous" :
     "Anonymous";
+  const role = userSnap.exists ? userSnap.data().role : null;
+  const isOfficial = role === "government" || role === "official";
 
   // Create the comment document
   const commentDoc = await commentsRef.add({
     authorId: uid,
     authorName,
-    text,
-    createdAt:
+    text: cleanText,
+    parentCommentId: parentCommentId || null,
+    isOfficial,
+    timestamp:
       admin.firestore.FieldValue.serverTimestamp(),
   });
 

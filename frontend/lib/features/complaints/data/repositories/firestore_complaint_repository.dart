@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -10,9 +11,13 @@ import 'package:spotit/core/services/storage_service.dart';
 /// Firestore-backed implementation of [ComplaintRepository].
 ///
 /// Reads and writes complaints from/to the live Firestore `complaints`
-/// collection. Upvote and comment operations write directly to Firestore.
+/// collection. Upvote and comment mutations are delegated to callable
+/// Cloud Functions to keep counters server-authoritative.
 class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
+    region: 'asia-south1',
+  );
   final StorageService _storageService = StorageService();
 
   /// Reference to the top-level complaints collection.
@@ -123,30 +128,10 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
+    final callable = _functions.httpsCallable('toggleUpvote');
+    await callable.call({'complaintId': complaintId});
+
     final docRef = _complaintsRef.doc(complaintId);
-    final doc = await docRef.get();
-    if (!doc.exists) throw Exception('Complaint not found');
-
-    final data = doc.data()!;
-    final List<String> currentVoters =
-        data['upvotedBy'] != null ? List<String>.from(data['upvotedBy']) : [];
-
-    final bool alreadyUpvoted = currentVoters.contains(user.uid);
-
-    if (alreadyUpvoted) {
-      // Remove the user's upvote
-      await docRef.update({
-        'upvotedBy': FieldValue.arrayRemove([user.uid]),
-        'upvoteCount': FieldValue.increment(-1),
-      });
-    } else {
-      // Add the user's upvote
-      await docRef.update({
-        'upvotedBy': FieldValue.arrayUnion([user.uid]),
-        'upvoteCount': FieldValue.increment(1),
-      });
-    }
-
     return Complaint.fromFirestore(await docRef.get());
   }
 
@@ -159,25 +144,14 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? parentCommentId,
     bool isOfficial = false,
   }) async {
-    final docRef = _complaintsRef.doc(complaintId);
-
-    // 1. Add comment to the comments subcollection
-    await docRef.collection('comments').add({
-      'author': author,
-      'authorId': authorId,
+    final callable = _functions.httpsCallable('addComment');
+    await callable.call({
+      'complaintId': complaintId,
       'text': text,
       'parentCommentId': parentCommentId,
-      'isOfficial': isOfficial,
-      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // 2. Increment the commentCount on the parent document
-    await docRef.update({
-      'commentCount': FieldValue.increment(1),
-    });
-
-    // 3. Return the updated comment count
-    final updatedDoc = await docRef.get();
+    final updatedDoc = await _complaintsRef.doc(complaintId).get();
     final data = updatedDoc.data();
     return (data?['commentCount'] as num?)?.toInt() ?? 0;
   }
@@ -194,7 +168,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       final data = doc.data();
       return {
         'id': doc.id,
-        'author': data['author'] as String? ?? 'Anonymous',
+        'author':
+            data['authorName'] as String? ?? data['author'] as String? ?? 'Anonymous',
         'authorId': data['authorId'] as String? ?? '',
         'text': data['text'] as String? ?? '',
         'parentCommentId': data['parentCommentId'] as String?,
