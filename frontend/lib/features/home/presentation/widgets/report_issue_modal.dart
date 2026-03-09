@@ -899,6 +899,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Category expandable dropdown ──
   Widget _buildCategoryDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedCat = _categories.cast<Map<String, dynamic>?>().firstWhere(
           (c) => c!['label'] == _selectedCategory,
           orElse: () => null,
@@ -913,10 +914,10 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: _fieldFill,
+              color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isCategoryExpanded ? _accentGreen : _borderColor,
+                color: _isCategoryExpanded ? _accentGreen : _borderColor(isDark),
                 width: _isCategoryExpanded ? 1.5 : 1,
               ),
             ),
@@ -936,7 +937,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                         ? selectedCat['label'] as String
                         : 'Select Category',
                     style: TextStyle(
-                      color: selectedCat != null ? _textPrimary : _hintColor,
+                      color: selectedCat != null ? _textPrimary(isDark) : _hintColor(isDark),
                       fontSize: 14,
                     ),
                   ),
@@ -946,7 +947,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: _hintColor,
+                    color: _hintColor(isDark),
                     size: 22,
                   ),
                 ),
@@ -982,12 +983,12 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? _accentGreen.withAlpha(40)
-                            : _fieldFill,
+                            : _fieldFill(isDark),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
                               ? _accentGreen.withAlpha(120)
-                              : _borderColor,
+                              : _borderColor(isDark),
                         ),
                       ),
                       child: Row(
@@ -998,7 +999,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                             child: Text(
                               label,
                               style: TextStyle(
-                                color: isSelected ? _accentGreen : _textPrimary,
+                                color: isSelected ? _accentGreen : _textPrimary(isDark),
                                 fontSize: 14,
                                 fontWeight: isSelected
                                     ? FontWeight.w700
