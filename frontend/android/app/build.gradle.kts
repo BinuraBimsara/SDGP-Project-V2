@@ -47,8 +47,8 @@ android {
 
     buildTypes {
         release {
-            // Intentionally no debug signing in release.
-            // Configure a proper release keystore via signingConfigs before production builds.
+            // Development stage: keep release installable without production keystore.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
