@@ -812,6 +812,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Premium Location field ──
   Widget _buildLocationField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasCoords = _latitude != null && _longitude != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -822,10 +823,10 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: _fieldFill,
+              color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: hasCoords ? _accentGreen.withAlpha(100) : _borderColor,
+                color: hasCoords ? _accentGreen.withAlpha(100) : _borderColor(isDark),
               ),
             ),
             child: Row(
@@ -842,12 +843,12 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   child: _locationController.text.isEmpty
                       ? Text(
                           'Tap to pick location on map',
-                          style: TextStyle(color: _hintColor, fontSize: 14),
+                          style: TextStyle(color: _hintColor(isDark), fontSize: 14),
                         )
                       : Text(
                           _locationController.text,
                           style:
-                              const TextStyle(color: _textPrimary, fontSize: 14),
+                              TextStyle(color: _textPrimary(isDark), fontSize: 14),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -884,7 +885,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             child: Text(
               '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}',
               style: TextStyle(
-                color: Colors.white.withAlpha(60),
+                color: isDark
+                    ? Colors.white.withAlpha(60)
+                    : Colors.black.withAlpha(60),
                 fontSize: 11,
                 fontFamily: 'monospace',
               ),
