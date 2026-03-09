@@ -406,17 +406,21 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   // ── Build ──
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       decoration: BoxDecoration(
-        color: _sheetBg,
+        color: _sheetBg(isDark),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: _borderColor(isDark)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(120),
+            color: isDark
+                ? Colors.black.withAlpha(120)
+                : Colors.black.withAlpha(40),
             blurRadius: 30,
-            spreadRadius: 4,
+            spreadRadius: isDark ? 4 : 1,
           ),
         ],
       ),
