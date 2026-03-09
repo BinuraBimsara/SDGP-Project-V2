@@ -61,7 +61,8 @@ class AuthService {
 
   /// Creates a new official account with email and password.
   ///
-  /// Stores the user's role as 'official' in the Firestore `users` collection.
+  /// Client-side role assignment is intentionally blocked for security.
+  /// New accounts are created as regular users and must be promoted by backend/admin.
   /// The email must be a valid government email ending in `.gov.lk`.
   /// Throws on validation, network or Firebase errors.
   Future<UserCredential> createOfficialAccount({
@@ -74,13 +75,13 @@ class AuthService {
       password: password,
     );
 
-    // Store the role in Firestore.
+    // Store basic profile data only. Role escalation must be server-managed.
     final uid = userCredential.user!.uid;
     await _firestore.collection('users').doc(uid).set({
       'email': email.trim(),
-      'role': 'official',
+      'role': 'citizen',
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
 
     return userCredential;
   }
@@ -92,10 +93,24 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await _auth.signInWithEmailAndPassword(
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
+
+    final uid = credential.user?.uid;
+    if (uid == null) {
+      throw Exception('Signed-in user not found.');
+    }
+
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    final role = userDoc.data()?['role'] as String?;
+    if (role != 'official' && role != 'government') {
+      await _auth.signOut();
+      throw Exception('Official access not approved for this account.');
+    }
+
+    return credential;
   }
   // ──────────────────── Sign Out ────────────────────
 
