@@ -709,6 +709,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Image preview row ──
   Widget _buildImagePreviews() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 72,
       child: ListView.separated(
@@ -726,7 +727,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    border: Border.all(color: _borderColor),
+                    border: Border.all(color: _borderColor(isDark)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: kIsWeb
@@ -770,16 +771,17 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     bool alignTop = false,
     FocusNode? focusNode,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
       focusNode: focusNode,
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: _textPrimary, fontSize: 14),
+      style: TextStyle(color: _textPrimary(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: _hintColor, fontSize: 14),
+        hintStyle: TextStyle(color: _hintColor(isDark), fontSize: 14),
         filled: true,
-        fillColor: _fieldFill,
+        fillColor: _fieldFill(isDark),
         prefixIcon: Padding(
           padding: EdgeInsets.only(
             top: alignTop ? 14 : 0,
@@ -794,11 +796,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: _borderColor(isDark)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: _borderColor(isDark)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
