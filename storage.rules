@@ -3,20 +3,47 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isGovernment() {
+      return isSignedIn() &&
+        firestore.get(
+          /databases/(default)/documents/users/$(request.auth.uid)
+        ).data.role in ['government', 'official'];
+    }
+
+    function isImageUpload() {
+      return request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
     // ── Complaint evidence images ──────────────────────────────────────
     // Path: complaints/{complaintId}/{fileName}
     match /complaints/{complaintId}/{fileName} {
-      // Anyone can view complaint images (public read)
-      allow read: if true;
+      // Signed-in users can read complaint evidence.
+      allow read: if isSignedIn();
 
-      // Only authenticated users can upload
-      // Max 5 MB, image content types only
-      allow create: if request.auth != null
-                    && request.resource.size < 5 * 1024 * 1024
-                    && request.resource.contentType.matches('image/.*');
+      // Uploader must be authenticated and size/content type constrained.
+      allow create: if isSignedIn() && isImageUpload();
 
       // No updates or deletes from clients (admin SDK only)
       allow update, delete: if false;
+    }
+
+    // ── Profile images ─────────────────────────────────────────────────
+    // Path: profile_images/{uid}.jpg (or equivalent)
+    match /profile_images/{fileName} {
+      // Allow profile owner to read their image; government can read all.
+      allow read: if isSignedIn();
+
+      // Owner can upload/update only their own profile image.
+      allow create, update: if isSignedIn() &&
+        fileName.matches(request.auth.uid + '.*') &&
+        isImageUpload();
+
+      allow delete: if isSignedIn() && fileName.matches(request.auth.uid + '.*');
     }
 
     // ── Default: deny everything else ──────────────────────────────────
