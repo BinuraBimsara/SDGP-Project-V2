@@ -381,14 +381,27 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     setState(() => _errorMessage = message);
   }
 
-  // ── Colors ──
-  static const _sheetBg = Color(0xFF141414);
-  static const _fieldFill = Color(0xFF1E1E1E);
+  // ── Accent (shared across both themes) ──
   static const _accentGreen = Color(0xFFF9A825);
-  static const _borderColor = Color(0xFF2A2A2A);
-  static const _textPrimary = Colors.white;
-  static final _textSecondary = Colors.white.withAlpha(153);
-  static final _hintColor = Colors.white.withAlpha(100);
+
+  // ── Theme-aware color helpers ──
+  Color _sheetBg(bool isDark) =>
+      isDark ? const Color(0xFF141414) : const Color(0xFFFFFFFF);
+
+  Color _fieldFill(bool isDark) =>
+      isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
+
+  Color _borderColor(bool isDark) =>
+      isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
+
+  Color _textPrimary(bool isDark) =>
+      isDark ? Colors.white : const Color(0xFF1A1A1A);
+
+  Color _textSecondary(bool isDark) =>
+      isDark ? Colors.white.withAlpha(153) : Colors.black.withAlpha(140);
+
+  Color _hintColor(bool isDark) =>
+      isDark ? Colors.white.withAlpha(100) : Colors.black.withAlpha(90);
 
   // ── Build ──
   @override
