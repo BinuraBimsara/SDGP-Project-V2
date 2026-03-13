@@ -18,6 +18,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   late ChatRepository _chatRepo;
   String? _currentUserId;
   bool _hasInitialized = false;
+  bool _isLoadingUpdates = true;
 
   @override
   void didChangeDependencies() {
@@ -26,7 +27,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
       _chatRepo = ChatRepositoryProvider.of(context);
       _currentUserId = FirebaseAuth.instance.currentUser?.uid;
       _hasInitialized = true;
+      _initializeNotifications();
     }
+  }
+
+  Future<void> _initializeNotifications({bool forceRefresh = false}) async {
+    final uid = _currentUserId;
+    if (uid == null || uid.isEmpty) {
+      if (mounted) setState(() => _isLoadingUpdates = false);
+      return;
+    }
+
+    if (mounted) setState(() => _isLoadingUpdates = true);
+    await NotificationBadge.initializeForCitizen(
+      uid,
+      forceRefresh: forceRefresh,
+    );
+    if (mounted) setState(() => _isLoadingUpdates = false);
   }
 
   void _openChat(ChatSession chat) {
