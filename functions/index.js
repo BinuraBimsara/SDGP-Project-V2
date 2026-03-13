@@ -668,3 +668,41 @@ exports.setUserRole = onCall(async (request) => {
   };
 });
 
+// -- Mark all notifications read (callable) ---------------------------------
+// Marks all unread notifications for the current user as read.
+exports.markAllNotificationsRead = onCall(
+    {enforceAppCheck: true},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Authentication required.");
+      }
+
+      const uid = request.auth.uid;
+      const limitRaw = Number(request.data?.limit || 500);
+      const limit = Number.isFinite(limitRaw) ?
+        Math.max(1, Math.min(1000, Math.trunc(limitRaw))) :
+        500;
+
+      const unreadSnap = await db.collection("users").doc(uid)
+          .collection("notifications")
+          .where("read", "==", false)
+          .limit(limit)
+          .get();
+
+      if (unreadSnap.empty) {
+        return {updatedCount: 0};
+      }
+
+      const batch = db.batch();
+      unreadSnap.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          read: true,
+          readAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      await batch.commit();
+
+      return {updatedCount: unreadSnap.size};
+    },
+);
+
