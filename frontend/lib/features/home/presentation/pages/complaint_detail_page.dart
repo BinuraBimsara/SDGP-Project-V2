@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/features/chat/presentation/pages/chat_screen.dart';
 import 'package:spotit/main.dart';
 
 class Comment {
@@ -104,6 +105,41 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     } catch (e) {
       debugPrint('Error checking user role: $e');
     }
+  }
+
+  Future<void> _openChatWithCitizen() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final chatRepo = ChatRepositoryProvider.of(context);
+
+    final officialDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .get();
+    final officialName = officialDoc.data()?['name'] as String? ??
+        currentUser.displayName ??
+        'Official';
+
+    final session = await chatRepo.getOrCreateChat(
+      officialId: currentUser.uid,
+      citizenId: _complaint.authorId,
+      complaintId: _complaint.id,
+      officialName: officialName,
+      citizenName: _complaint.authorName,
+    );
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          chatId: session.id,
+          otherUserName: _complaint.authorName,
+          isOfficial: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -667,6 +703,18 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
+        floatingActionButton: _isOfficial
+            ? FloatingActionButton.extended(
+                onPressed: _openChatWithCitizen,
+                backgroundColor: const Color(0xFF2EAA5E),
+                icon: const Icon(Icons.chat_rounded, color: Colors.white),
+                label: const Text(
+                  'Contact Citizen',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              )
+            : null,
         body: Column(
           children: [
             Expanded(
