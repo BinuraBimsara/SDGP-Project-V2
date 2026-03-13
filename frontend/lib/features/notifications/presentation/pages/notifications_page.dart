@@ -172,7 +172,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         );
                       },
                     ),
-                  // Existing static notifications
+                  // Backend-driven report/activity notifications
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -186,9 +186,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                   ),
                   ValueListenableBuilder<int>(
-                    valueListenable: NotificationBadge.unreadCount,
+                    valueListenable: NotificationBadge.updatesVersion,
                     builder: (context, _, __) {
                       final notifications = NotificationBadge.notifications;
+
+                      if (_isLoadingUpdates) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFF9A825),
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (notifications.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          child: Text(
+                            'No updates yet. You will see report status changes, new comments, and upvote activity here.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: subtitleColor,
+                              height: 1.5,
+                            ),
+                          ),
+                        );
+                      }
+
                       return Column(
                         children: notifications.map((item) {
                           final cardBgColor =
@@ -288,7 +315,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                           ),
                                           const SizedBox(width: 4.0),
                                           Text(
-                                            item.time,
+                                            NotificationBadge.timeAgo(
+                                                item.createdAt),
                                             style: TextStyle(
                                               fontSize: 12.0,
                                               color: subtitleColor,
