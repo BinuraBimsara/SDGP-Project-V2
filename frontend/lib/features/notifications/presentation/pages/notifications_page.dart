@@ -18,6 +18,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   late ChatRepository _chatRepo;
   String? _currentUserId;
   bool _hasInitialized = false;
+  bool _isLoadingUpdates = true;
 
   @override
   void didChangeDependencies() {
@@ -26,7 +27,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
       _chatRepo = ChatRepositoryProvider.of(context);
       _currentUserId = FirebaseAuth.instance.currentUser?.uid;
       _hasInitialized = true;
+      _initializeNotifications();
     }
+  }
+
+  Future<void> _initializeNotifications({bool forceRefresh = false}) async {
+    final uid = _currentUserId;
+    if (uid == null || uid.isEmpty) {
+      if (mounted) setState(() => _isLoadingUpdates = false);
+      return;
+    }
+
+    if (mounted) setState(() => _isLoadingUpdates = true);
+    await NotificationBadge.initializeForCitizen(
+      uid,
+      forceRefresh: forceRefresh,
+    );
+    if (mounted) setState(() => _isLoadingUpdates = false);
   }
 
   void _openChat(ChatSession chat) {
@@ -89,8 +106,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      NotificationBadge.markAllRead();
+                    onPressed: () async {
+                      await NotificationBadge.markAllRead();
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -111,8 +128,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
             // Content
             Expanded(
-              child: ListView(
-                children: [
+              child: RefreshIndicator(
+                onRefresh: () => _initializeNotifications(forceRefresh: true),
+                color: const Color(0xFFF9A825),
+                child: ListView(
+                  children: [
                   // Chat messages section
                   if (_currentUserId != null)
                     StreamBuilder<List<ChatSession>>(
@@ -152,7 +172,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         );
                       },
                     ),
-                  // Existing static notifications
+                  // Backend-driven report/activity notifications
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -166,9 +186,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                   ),
                   ValueListenableBuilder<int>(
-                    valueListenable: NotificationBadge.unreadCount,
+                    valueListenable: NotificationBadge.updatesVersion,
                     builder: (context, _, __) {
                       final notifications = NotificationBadge.notifications;
+
+                      if (_isLoadingUpdates) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFF9A825),
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (notifications.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          child: Text(
+                            'No updates yet. You will see report status changes, new comments, and upvote activity here.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: subtitleColor,
+                              height: 1.5,
+                            ),
+                          ),
+                        );
+                      }
+
                       return Column(
                         children: notifications.map((item) {
                           final cardBgColor =
@@ -268,7 +315,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                           ),
                                           const SizedBox(width: 4.0),
                                           Text(
-                                            item.time,
+                                            NotificationBadge.timeAgo(
+                                                item.createdAt),
                                             style: TextStyle(
                                               fontSize: 12.0,
                                               color: subtitleColor,
@@ -286,7 +334,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       );
                     },
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

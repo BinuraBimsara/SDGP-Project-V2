@@ -5,7 +5,7 @@
  * Project: spotit-lk | Region: asia-south1
  */
 
-const {setGlobalOptions} = require("firebase-functions");
+const {setGlobalOptions} = require("firebase-functions/v2/options");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
 const {onDocumentCreated, onDocumentUpdated} =
@@ -167,6 +167,44 @@ async function sendNotification(uid, title, body, extra = {}) {
   }
 }
 
+/**
+ * Queue upvote notifications and emit one alert for each group of 5 new upvotes.
+ * @param {string} authorId
+ * @param {string} complaintId
+ * @param {string} complaintTitle
+ */
+async function handleUpvoteNotification(authorId, complaintId, complaintTitle) {
+  const stateRef = db.collection("users").doc(authorId)
+      .collection("notificationState").doc(`upvotes_${complaintId}`);
+
+  const stateSnap = await stateRef.get();
+  const pending = stateSnap.exists ?
+    (stateSnap.data().pendingUpvotes || 0) : 0;
+
+  const nextPending = pending + 1;
+
+  if (nextPending >= 5) {
+    const remainder = nextPending - 5;
+    await sendNotification(
+        authorId,
+        "Report Upvoted",
+        "Your report receives 5 new upvotes",
+        {complaintId, complaintTitle, type: "upvote"},
+    );
+
+    await stateRef.set({
+      pendingUpvotes: remainder,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return;
+  }
+
+  await stateRef.set({
+    pendingUpvotes: nextPending,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+}
+
 // -- Health-check endpoint ---------------------------------------------------
 // GET /healthCheck -> verifies the functions runtime is alive
 exports.healthCheck = onRequest((req, res) => {
@@ -322,6 +360,11 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       throw new HttpsError("not-found", "Complaint not found.");
     }
 
+    const complaintData = complaintSnap.data() || {};
+    const currentUpvotes = Number(complaintData.upvoteCount || 0);
+    const authorId = complaintData.authorId || "";
+    const complaintTitle = complaintData.title || "your report";
+
     const upvoteSnap = await tx.get(upvoteRef);
 
     if (upvoteSnap.exists) {
@@ -330,7 +373,12 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       tx.update(complaintRef, {
         upvoteCount: admin.firestore.FieldValue.increment(-1),
       });
-      return {upvoted: false};
+      return {
+        upvoted: false,
+        authorId,
+        complaintTitle,
+        nextUpvoteCount: Math.max(0, currentUpvotes - 1),
+      };
     } else {
       // Add upvote
       tx.set(upvoteRef, {
@@ -340,9 +388,22 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       tx.update(complaintRef, {
         upvoteCount: admin.firestore.FieldValue.increment(1),
       });
-      return {upvoted: true};
+      return {
+        upvoted: true,
+        authorId,
+        complaintTitle,
+        nextUpvoteCount: currentUpvotes + 1,
+      };
     }
   });
+
+  if (result.upvoted && result.authorId && result.authorId !== uid) {
+    await handleUpvoteNotification(
+        result.authorId,
+        complaintId,
+        result.complaintTitle || "your report",
+    );
+  }
 
   logger.info(
       `User ${uid} ` +
@@ -389,6 +450,7 @@ exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
   if (!complaintSnap.exists) {
     throw new HttpsError("not-found", "Complaint not found.");
   }
+  const complaintData = complaintSnap.data() || {};
 
   // Fetch author display name from user profile
   const userSnap = await db
@@ -420,6 +482,25 @@ exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
       `Comment ${commentDoc.id} added to ` +
     `complaint ${complaintId} by ${uid}`,
   );
+
+  const complaintAuthorId = complaintData.authorId || "";
+  const complaintTitle = complaintData.title || "your report";
+  if (complaintAuthorId && complaintAuthorId !== uid) {
+    const commentActor = isOfficial ?
+      "A government official" :
+      "A user";
+    await sendNotification(
+        complaintAuthorId,
+        "New Comment",
+        `${commentActor} commented on \"${complaintTitle}\"`,
+        {
+          complaintId,
+          commentId: commentDoc.id,
+          type: "comment",
+          isOfficialComment: isOfficial,
+        },
+    );
+  }
 
   return {
     commentId: commentDoc.id,
@@ -586,4 +667,42 @@ exports.setUserRole = onCall(async (request) => {
     role,
   };
 });
+
+// -- Mark all notifications read (callable) ---------------------------------
+// Marks all unread notifications for the current user as read.
+exports.markAllNotificationsRead = onCall(
+    {enforceAppCheck: true},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Authentication required.");
+      }
+
+      const uid = request.auth.uid;
+      const limitRaw = Number(request.data?.limit || 500);
+      const limit = Number.isFinite(limitRaw) ?
+        Math.max(1, Math.min(1000, Math.trunc(limitRaw))) :
+        500;
+
+      const unreadSnap = await db.collection("users").doc(uid)
+          .collection("notifications")
+          .where("read", "==", false)
+          .limit(limit)
+          .get();
+
+      if (unreadSnap.empty) {
+        return {updatedCount: 0};
+      }
+
+      const batch = db.batch();
+      unreadSnap.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          read: true,
+          readAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      await batch.commit();
+
+      return {updatedCount: unreadSnap.size};
+    },
+);
 
