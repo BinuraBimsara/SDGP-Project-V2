@@ -164,19 +164,21 @@ class NotificationBadge {
 }
 
 class NotificationData {
+  final String id;
   final IconData icon;
   final Color iconColor;
   final String title;
   final String description;
-  final String time;
+  final DateTime createdAt;
   bool isUnread;
 
   NotificationData({
+    required this.id,
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.description,
-    required this.time,
+    required this.createdAt,
     this.isUnread = false,
   });
 }
