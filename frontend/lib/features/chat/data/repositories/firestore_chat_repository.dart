@@ -81,27 +81,29 @@ class FirestoreChatRepository implements ChatRepository {
     required String chatId,
     required String senderId,
     required String text,
+    required bool isOfficialSender,
   }) async {
     final batch = _firestore.batch();
     final chatDoc = _chatsRef.doc(chatId);
     final msgRef = chatDoc.collection('messages').doc();
 
+    // Use client timestamp for immediate ordering + server timestamp for authoritative order.
+    final clientTs = Timestamp.now();
+
     batch.set(msgRef, {
       'senderId': senderId,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
+      'timestampClient': clientTs,
     });
-
-    // Determine which read flag to reset based on sender role.
-    final chatSnap = await chatDoc.get();
-    final chatData = chatSnap.data()!;
-    final isOfficialSending = chatData['officialId'] == senderId;
 
     final updateData = <String, dynamic>{
       'lastMessage': text,
       'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastMessageTimeClient': clientTs,
     };
-    if (isOfficialSending) {
+
+    if (isOfficialSender) {
       updateData['isReadByCitizen'] = false;
       updateData['isReadByOfficial'] = true;
     } else {
