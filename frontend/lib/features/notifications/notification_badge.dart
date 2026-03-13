@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:spotit/features/chat/data/repositories/firestore_chat_repository.dart';
 
 /// Holds the shared notification data and unread count.
 /// Data lives here (not in the page state) so it survives tab switches.
@@ -7,7 +9,40 @@ class NotificationBadge {
 
   static final ValueNotifier<int> unreadCount = ValueNotifier<int>(2);
 
-  /// The canonical list of notifications — shared across rebuilds.
+  static int _staticUnreadCount = 2;
+  static int _chatUnreadCount = 0;
+
+  static StreamSubscription<int>? _chatUnreadSub;
+
+  /// Start listening for chat unread counts (for citizens).
+  static void startChatUnreadListener(String userId) {
+    _chatUnreadSub?.cancel();
+    final chatRepo = FirestoreChatRepository();
+    _chatUnreadSub =
+        chatRepo.streamUnreadCountForCitizen(userId).listen((count) {
+      _chatUnreadCount = count;
+      unreadCount.value = _staticUnreadCount + _chatUnreadCount;
+    });
+  }
+
+  /// Start listening for chat unread counts (for officials).
+  static void startOfficialChatUnreadListener(String userId) {
+    _chatUnreadSub?.cancel();
+    final chatRepo = FirestoreChatRepository();
+    _chatUnreadSub =
+        chatRepo.streamUnreadCountForOfficial(userId).listen((count) {
+      _chatUnreadCount = count;
+      unreadCount.value = _staticUnreadCount + _chatUnreadCount;
+    });
+  }
+
+  /// Stop the chat unread listener.
+  static void stopChatUnreadListener() {
+    _chatUnreadSub?.cancel();
+    _chatUnreadSub = null;
+  }
+
+  /// The canonical list of notifications -- shared across rebuilds.
   static final List<NotificationData> notifications = [
     NotificationData(
       icon: Icons.check_circle_outline,
@@ -40,7 +75,8 @@ class NotificationBadge {
     for (final n in notifications) {
       n.isUnread = false;
     }
-    unreadCount.value = 0;
+    _staticUnreadCount = 0;
+    unreadCount.value = _chatUnreadCount;
   }
 }
 
