@@ -1,21 +1,34 @@
 import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:spotit/features/chat/data/repositories/firestore_chat_repository.dart';
 
-/// Holds the shared notification data and unread count.
-/// Data lives here (not in the page state) so it survives tab switches.
+/// Shared notification store used by nav badges and the notifications page.
+///
+/// Citizen update notifications are read from:
+/// `users/{uid}/notifications`
 class NotificationBadge {
   NotificationBadge._();
 
-  static final ValueNotifier<int> unreadCount = ValueNotifier<int>(2);
+  static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
+  static final ValueNotifier<int> updatesVersion = ValueNotifier<int>(0);
 
-  static int _staticUnreadCount = 2;
+  static int _staticUnreadCount = 0;
   static int _chatUnreadCount = 0;
+  static String? _activeCitizenUid;
+  static bool _isCitizenLoading = false;
+  static bool _isCitizenInitialized = false;
 
   static StreamSubscription<int>? _chatUnreadSub;
 
+  static final List<NotificationData> notifications = [];
+
   /// Start listening for chat unread counts (for citizens).
   static void startChatUnreadListener(String userId) {
+    initializeForCitizen(userId);
+
     _chatUnreadSub?.cancel();
     final chatRepo = FirestoreChatRepository();
     _chatUnreadSub =
