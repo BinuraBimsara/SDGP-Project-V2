@@ -5,7 +5,7 @@
  * Project: spotit-lk | Region: asia-south1
  */
 
-const {setGlobalOptions} = require("firebase-functions");
+const {setGlobalOptions} = require("firebase-functions/v2/options");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {beforeUserCreated} = require("firebase-functions/v2/identity");
 const {onDocumentCreated, onDocumentUpdated} =
