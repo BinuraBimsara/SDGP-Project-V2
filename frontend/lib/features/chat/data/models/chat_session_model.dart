@@ -31,6 +31,8 @@ class ChatSession {
     DateTime time;
     if (data['lastMessageTime'] is Timestamp) {
       time = (data['lastMessageTime'] as Timestamp).toDate();
+    } else if (data['lastMessageTimeClient'] is Timestamp) {
+      time = (data['lastMessageTimeClient'] as Timestamp).toDate();
     } else {
       time = DateTime.now();
     }

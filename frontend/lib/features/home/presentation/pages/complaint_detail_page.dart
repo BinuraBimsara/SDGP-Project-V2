@@ -63,6 +63,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   bool _isLoadingComments = true;
   bool _isOfficial = false;
   late ComplaintRepository _repository;
+  bool _isLaunchingChat = false;
 
   @override
   void initState() {
@@ -108,38 +109,60 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   }
 
   Future<void> _openChatWithCitizen() async {
+    if (_isLaunchingChat) return;
+    if (_complaint.authorId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Citizen account unavailable for chat')),
+        );
+      }
+      return;
+    }
+
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    final chatRepo = ChatRepositoryProvider.of(context);
+    setState(() => _isLaunchingChat = true);
 
-    final officialDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .get();
-    final officialName = officialDoc.data()?['name'] as String? ??
-        currentUser.displayName ??
-        'Official';
+    try {
+      final chatRepo = ChatRepositoryProvider.of(context);
 
-    final session = await chatRepo.getOrCreateChat(
-      officialId: currentUser.uid,
-      citizenId: _complaint.authorId,
-      complaintId: _complaint.id,
-      officialName: officialName,
-      citizenName: _complaint.authorName,
-    );
+      final officialDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      final officialName = officialDoc.data()?['name'] as String? ??
+          currentUser.displayName ??
+          'Official';
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          chatId: session.id,
-          otherUserName: _complaint.authorName,
-          isOfficial: true,
+      final session = await chatRepo.getOrCreateChat(
+        officialId: currentUser.uid,
+        citizenId: _complaint.authorId,
+        complaintId: _complaint.id,
+        officialName: officialName,
+        citizenName: _complaint.authorName,
+      );
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            chatId: session.id,
+            otherUserName: _complaint.authorName,
+            isOfficial: true,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to start chat: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLaunchingChat = false);
+    }
   }
 
   @override

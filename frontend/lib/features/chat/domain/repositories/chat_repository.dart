@@ -26,6 +26,7 @@ abstract class ChatRepository {
     required String chatId,
     required String senderId,
     required String text,
+    required bool isOfficialSender,
   });
 
   /// Mark a chat as read by the citizen.

@@ -19,6 +19,8 @@ class ChatMessage {
     DateTime ts;
     if (data['timestamp'] is Timestamp) {
       ts = (data['timestamp'] as Timestamp).toDate();
+    } else if (data['timestampClient'] is Timestamp) {
+      ts = (data['timestampClient'] as Timestamp).toDate();
     } else {
       ts = DateTime.now();
     }
@@ -36,6 +38,7 @@ class ChatMessage {
       'senderId': senderId,
       'text': text,
       'timestamp': Timestamp.fromDate(timestamp),
+      'timestampClient': Timestamp.fromDate(timestamp),
     };
   }
 }

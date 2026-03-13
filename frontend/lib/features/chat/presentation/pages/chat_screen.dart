@@ -60,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
       chatId: widget.chatId,
       senderId: _currentUserId,
       text: text,
+      isOfficialSender: widget.isOfficial,
     );
   }
 
