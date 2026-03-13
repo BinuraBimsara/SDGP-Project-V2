@@ -55,34 +55,72 @@ class NotificationBadge {
     _chatUnreadSub = null;
   }
 
-  /// The canonical list of notifications -- shared across rebuilds.
-  static final List<NotificationData> notifications = [
-    NotificationData(
-      icon: Icons.check_circle_outline,
-      iconColor: const Color(0xFFF9A825),
-      title: 'Report Status Updated',
-      description:
-          'Your report "Large pothole on Main Street" has been marked as In Progress',
-      time: '1h ago',
-      isUnread: true,
-    ),
-    NotificationData(
-      icon: Icons.chat_bubble_outline,
-      iconColor: const Color(0xFFFFCA28),
-      title: 'New Comment',
-      description: 'A government official commented on your report',
-      time: '2h ago',
-      isUnread: true,
-    ),
-    NotificationData(
-      icon: Icons.arrow_upward,
-      iconColor: const Color(0xFFF9A825),
-      title: 'Report Upvoted',
-      description: 'Your report received 5 new upvotes',
-      time: '1d ago',
-      isUnread: false,
-    ),
-  ];
+  static Future<void> initializeForCitizen(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
+    if (_isCitizenLoading) return;
+    if (!forceRefresh && _isCitizenInitialized && _activeCitizenUid == userId) {
+      return;
+    }
+
+    _isCitizenLoading = true;
+    _activeCitizenUid = userId;
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .limit(100)
+          .get();
+
+      final loaded = snap.docs.map((doc) {
+        final data = doc.data();
+        final title = (data['title'] as String?) ?? 'Notification';
+        final body = (data['body'] as String?) ?? '';
+
+        IconData icon = Icons.notifications_none_rounded;
+        Color iconColor = const Color(0xFFF9A825);
+        if (title.toLowerCase().contains('status')) {
+          icon = Icons.check_circle_outline;
+        } else if (title.toLowerCase().contains('comment')) {
+          icon = Icons.chat_bubble_outline;
+        } else if (title.toLowerCase().contains('upvote')) {
+          icon = Icons.arrow_upward;
+        }
+
+        final createdAt = _asDateTime(data['createdAt']) ?? DateTime.now();
+        final isRead = (data['read'] as bool?) ?? false;
+
+        return NotificationData(
+          id: doc.id,
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          description: body,
+          createdAt: createdAt,
+          isUnread: !isRead,
+        );
+      }).toList();
+
+      notifications
+        ..clear()
+        ..addAll(loaded);
+
+      _staticUnreadCount = notifications.where((n) => n.isUnread).length;
+      unreadCount.value = _staticUnreadCount + _chatUnreadCount;
+      updatesVersion.value++;
+      _isCitizenInitialized = true;
+    } finally {
+      _isCitizenLoading = false;
+    }
+  }
+
+  static Future<void> refreshCitizenNotifications(String userId) {
+    return initializeForCitizen(userId, forceRefresh: true);
+  }
 
   static void markAllRead() {
     for (final n in notifications) {
