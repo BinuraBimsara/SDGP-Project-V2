@@ -128,8 +128,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
             // Content
             Expanded(
-              child: ListView(
-                children: [
+              child: RefreshIndicator(
+                onRefresh: () => _initializeNotifications(forceRefresh: true),
+                color: const Color(0xFFF9A825),
+                child: ListView(
+                  children: [
                   // Chat messages section
                   if (_currentUserId != null)
                     StreamBuilder<List<ChatSession>>(
@@ -303,7 +306,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       );
                     },
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
