@@ -122,12 +122,44 @@ class NotificationBadge {
     return initializeForCitizen(userId, forceRefresh: true);
   }
 
-  static void markAllRead() {
+  static Future<void> markAllRead() async {
+    final uid = _activeCitizenUid;
+    if (uid == null || uid.isEmpty) {
+      for (final n in notifications) {
+        n.isUnread = false;
+      }
+      _staticUnreadCount = 0;
+      unreadCount.value = _chatUnreadCount;
+      updatesVersion.value++;
+      return;
+    }
+
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+        .httpsCallable('markAllNotificationsRead');
+    await callable.call({'limit': 500});
+
     for (final n in notifications) {
       n.isUnread = false;
     }
     _staticUnreadCount = 0;
     unreadCount.value = _chatUnreadCount;
+    updatesVersion.value++;
+  }
+
+  static DateTime? _asDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static String timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
 
