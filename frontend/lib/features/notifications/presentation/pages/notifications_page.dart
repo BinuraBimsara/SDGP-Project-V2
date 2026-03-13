@@ -106,8 +106,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      NotificationBadge.markAllRead();
+                    onPressed: () async {
+                      await NotificationBadge.markAllRead();
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
