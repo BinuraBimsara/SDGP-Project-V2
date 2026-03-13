@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
@@ -45,10 +46,17 @@ class _HomeControllerPageState extends State<HomeControllerPage>
         curve: Curves.easeInOut,
       ),
     );
+
+    // Start listening for chat unread counts.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      NotificationBadge.startChatUnreadListener(user.uid);
+    }
   }
 
   @override
   void dispose() {
+    NotificationBadge.stopChatUnreadListener();
     _homeBounceController.dispose();
     _feedScrollController.dispose();
     super.dispose();

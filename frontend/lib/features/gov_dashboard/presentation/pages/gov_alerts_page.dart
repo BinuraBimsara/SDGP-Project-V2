@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:spotit/features/chat/data/models/chat_session_model.dart';
+import 'package:spotit/features/chat/domain/repositories/chat_repository.dart';
+import 'package:spotit/features/chat/presentation/pages/chat_screen.dart';
+import 'package:spotit/features/chat/presentation/widgets/chat_session_card.dart';
+import 'package:spotit/main.dart';
 
 /// A notification / alert item for government officials.
 class _GovAlert {
@@ -31,11 +36,22 @@ class GovAlertsPage extends StatefulWidget {
 class _GovAlertsPageState extends State<GovAlertsPage> {
   List<_GovAlert> _alerts = [];
   bool _isLoading = true;
+  late ChatRepository _chatRepo;
+  bool _hasInitializedChat = false;
 
   @override
   void initState() {
     super.initState();
     _loadAlerts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasInitializedChat) {
+      _chatRepo = ChatRepositoryProvider.of(context);
+      _hasInitializedChat = true;
+    }
   }
 
   Future<void> _loadAlerts() async {
@@ -186,56 +202,119 @@ class _GovAlertsPageState extends State<GovAlertsPage> {
                         color: Color(0xFFF9A825),
                       ),
                     )
-                  : _alerts.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.notifications_off_outlined,
-                                size: 56,
-                                color: subtitleColor,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No alerts yet',
+                  : RefreshIndicator(
+                      onRefresh: _loadAlerts,
+                      color: const Color(0xFFF9A825),
+                      child: ListView(
+                        children: [
+                          // Active chats section
+                          _buildChatSessionsSection(
+                              isDark, textColor, subtitleColor),
+                          // Comment replies section
+                          if (_alerts.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Text(
+                                'Comment Replies',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: textColor,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'You\'ll be notified when someone\nreplies to your comments',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: subtitleColor,
-                                ),
+                            ),
+                            ..._alerts.map((alert) => _buildAlertCard(
+                                  alert,
+                                  isDark,
+                                  textColor,
+                                  subtitleColor,
+                                )),
+                          ],
+                          if (_alerts.isEmpty && !_hasInitializedChat)
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 56,
+                                    color: subtitleColor,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No alerts yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'You\'ll be notified when someone\nreplies to your comments',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: subtitleColor,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadAlerts,
-                          color: const Color(0xFFF9A825),
-                          child: ListView.builder(
-                            itemCount: _alerts.length,
-                            itemBuilder: (context, index) {
-                              return _buildAlertCard(
-                                _alerts[index],
-                                isDark,
-                                textColor,
-                                subtitleColor,
-                              );
-                            },
-                          ),
-                        ),
+                            ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildChatSessionsSection(
+      bool isDark, Color textColor, Color? subtitleColor) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<ChatSession>>(
+      stream: _chatRepo.streamChatSessionsAsOfficial(uid),
+      builder: (context, snapshot) {
+        final chats = snapshot.data ?? [];
+        if (chats.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Active Chats',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
+            ...chats.map((chat) => ChatSessionCard(
+                  session: chat,
+                  isUnread: !chat.isReadByOfficial,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        chatId: chat.id,
+                        otherUserName: chat.citizenName,
+                        isOfficial: true,
+                      ),
+                    ),
+                  ),
+                )),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
     );
   }
 

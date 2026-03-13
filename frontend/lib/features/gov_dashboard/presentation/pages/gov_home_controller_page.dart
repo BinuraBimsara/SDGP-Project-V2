@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/login_page.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_dashboard_page.dart';
@@ -20,6 +21,21 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
   int _currentNavIndex = 0;
   Key _pageKey = UniqueKey();
   final GlobalKey _themeButtonKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      NotificationBadge.startOfficialChatUnreadListener(user.uid);
+    }
+  }
+
+  @override
+  void dispose() {
+    NotificationBadge.stopChatUnreadListener();
+    super.dispose();
+  }
 
   void _switchTab(int index) {
     if (index != _currentNavIndex) {
