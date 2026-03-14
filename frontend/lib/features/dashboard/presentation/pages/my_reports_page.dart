@@ -467,12 +467,24 @@ class _MyReportsPageState extends State<MyReportsPage> {
                 ),
               );
               if (!mounted) return;
-              if (result == ComplaintDetailResult.deleted) {
+              if (result != null && result.isDeleted) {
                 widget.onComplaintDeleted?.call();
                 return;
               }
-              if (result != null) {
-                _loadMyReports();
+              // Immediately update local complaint with fresh data from detail page
+              if (result?.updatedComplaint != null) {
+                setState(() {
+                  final idx = _allComplaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (idx >= 0) {
+                    _allComplaints[idx] = result!.updatedComplaint!;
+                  }
+                  final fIdx = _filteredComplaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (fIdx >= 0) {
+                    _filteredComplaints[fIdx] = result!.updatedComplaint!;
+                  }
+                });
               }
             },
           );

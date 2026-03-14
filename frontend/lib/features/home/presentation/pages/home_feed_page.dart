@@ -591,7 +591,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                 ),
               );
               if (!mounted) return;
-              if (result == ComplaintDetailResult.deleted) {
+              if (result != null && result.isDeleted) {
                 messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Complaint deleted successfully'),
@@ -605,9 +605,15 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                 _loadComplaints();
                 return;
               }
-              if (result != null) {
-                // Reload complaints to get fresh data from Firebase
-                _loadComplaints();
+              // Immediately update local complaint with fresh data from detail page
+              if (result?.updatedComplaint != null) {
+                setState(() {
+                  final idx = _complaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (idx >= 0) {
+                    _complaints[idx] = result!.updatedComplaint!;
+                  }
+                });
               }
             },
           );
