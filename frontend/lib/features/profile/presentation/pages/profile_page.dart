@@ -249,7 +249,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // ── Header icon ──
-                            Icon(Icons.edit_note_rounded,
+                            const Icon(Icons.edit_note_rounded,
                                 color: accent, size: 32),
                             const SizedBox(height: 12),
                             Text(
