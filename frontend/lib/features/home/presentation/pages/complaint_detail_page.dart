@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -785,18 +785,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
-        floatingActionButton: _isOfficial
-            ? FloatingActionButton.extended(
-                onPressed: _openChatWithCitizen,
-                backgroundColor: const Color(0xFF2EAA5E),
-                icon: const Icon(Icons.chat_rounded, color: Colors.white),
-                label: const Text(
-                  'Contact Citizen',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-              )
-            : null,
         body: Column(
           children: [
             Expanded(
@@ -812,7 +800,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Image(s) ΓÇö carousel if multiple, single if one
+                      // Image(s) — carousel if multiple, single if one
                       _buildImageSection(inputBg),
 
                       Padding(
@@ -1047,6 +1035,41 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               ),
             ),
 
+            if (_isOfficial)
+              Container(
+                width: double.infinity,
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLaunchingChat ? null : _openChatWithCitizen,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2EAA5E),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: _isLaunchingChat
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.chat_rounded),
+                    label: Text(
+                      _isLaunchingChat ? 'Opening chat...' : 'Contact Citizen',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+
             // Comment input bar
             Container(
               padding: EdgeInsets.fromLTRB(
@@ -1179,7 +1202,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Single image ΓÇö dynamic aspect ratio
+    // Single image — dynamic aspect ratio
     if (urls.length == 1) {
       return _DetailDynamicImage(
         imageUrl: urls.first,
@@ -1188,7 +1211,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       );
     }
 
-    // Multiple images ΓÇö square carousel with indicators
+    // Multiple images — square carousel with indicators
     return AspectRatio(
       aspectRatio: 1.0, // square for carousel consistency
       child: Stack(
@@ -1238,12 +1261,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     );
   }
 
-  // ΓöÇΓöÇ Official-only location section with map + navigation ΓöÇΓöÇ
+  // ── Official-only location section with map + navigation ──
   Widget _buildOfficialLocationSection(bool isDark, Color textColor) {
     final lat = _complaint.latitude;
     final lng = _complaint.longitude;
 
-    // No coordinates ΓåÆ don't show anything
+    // No coordinates → don't show anything
     if (lat == null || lng == null) return const SizedBox.shrink();
 
     final target = LatLng(lat, lng);
@@ -1414,7 +1437,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
   }
 
-  // ΓöÇΓöÇ Map styles (same as LocationPickerScreen) ΓöÇΓöÇ
+  // ── Map styles (same as LocationPickerScreen) ──
   static const String _darkMapStyle = '''
 [
   {"elementType":"geometry","stylers":[{"color":"#0d0d0d"}]},
@@ -1746,11 +1769,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   }
 }
 
-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─────────────────────────────────────────────────────────────────────────────
 // Instagram-style dynamic aspect ratio image for the detail page.
 // Same approach as the home feed: resolve decoded dimensions, clamp to
-// 4:5 (portrait) Γåö 1.91:1 (landscape).
-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// 4:5 (portrait) ↔ 1.91:1 (landscape).
+// ─────────────────────────────────────────────────────────────────────────────
 class _DetailDynamicImage extends StatefulWidget {
   final String imageUrl;
   final bool isDark;
@@ -1865,5 +1888,3 @@ class _DetailDynamicImageState extends State<_DetailDynamicImage> {
     );
   }
 }
-
-
