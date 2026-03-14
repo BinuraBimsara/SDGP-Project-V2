@@ -130,30 +130,29 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to start chat')),
-        );
-      }
-      return;
-    }
+    final officialId =
+        (currentUser?.uid.isNotEmpty ?? false) ? currentUser!.uid : 'official-dev';
+    final fallbackOfficialName = _isOfficial ? 'Official' : 'Support';
 
     setState(() => _isLaunchingChat = true);
 
     try {
       final chatRepo = ChatRepositoryProvider.of(context);
 
-      final officialDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-      final officialName = officialDoc.data()?['name'] as String? ??
-          currentUser.displayName ??
-          'Official';
+      String officialName =
+          currentUser?.displayName?.trim().isNotEmpty == true
+              ? currentUser!.displayName!.trim()
+              : fallbackOfficialName;
+      if (currentUser != null) {
+        final officialDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+        officialName = officialDoc.data()?['name'] as String? ?? officialName;
+      }
 
       final session = await chatRepo.getOrCreateChat(
-        officialId: currentUser.uid,
+        officialId: officialId,
         citizenId: _complaint.authorId,
         complaintId: _complaint.id,
         officialName: officialName,
@@ -388,14 +387,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to comment.')),
-      );
-      return;
-    }
-    final author = user.displayName ?? user.email ?? 'You';
-    final authorId = user.uid;
+    final author = user?.displayName ?? user?.email ?? (_isOfficial ? 'Official' : 'You');
+    final authorId = user?.uid ?? (_isOfficial ? 'official-dev' : 'guest-user');
     final parentId = _replyingTo?.id;
 
     _commentController.clear();

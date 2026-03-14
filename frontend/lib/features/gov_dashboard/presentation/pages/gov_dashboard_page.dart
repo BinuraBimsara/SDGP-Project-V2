@@ -158,22 +158,25 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Location Bar ──
-              _buildLocationBar(isDark),
-              const SizedBox(height: 16),
-
               // ── Welcome Card ──
               _buildWelcomeCard(isDark),
               const SizedBox(height: 28),
 
               // ── Section Title ──
-              Text(
-                'Report Categories',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Report Categories',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  _buildLocationBar(isDark),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -201,46 +204,43 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   }
 
   Widget _buildLocationBar(bool isDark) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: GestureDetector(
-        onTap: _changeLocation,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          constraints: const BoxConstraints(maxWidth: 200),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withAlpha(26)
-                  : Colors.black.withAlpha(26),
-            ),
+    return GestureDetector(
+      onTap: _changeLocation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        constraints: const BoxConstraints(maxWidth: 170),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlpha(26)
+                : Colors.black.withAlpha(26),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _locationFetched
-                    ? Icons.location_on
-                    : Icons.location_searching_rounded,
-                color: const Color(0xFFF9A825),
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  _locationName,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _locationFetched
+                  ? Icons.location_on
+                  : Icons.location_searching_rounded,
+              color: const Color(0xFFF9A825),
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _locationName,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

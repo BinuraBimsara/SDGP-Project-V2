@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_status_reports_page.dart';
 import 'package:spotit/main.dart';
@@ -147,7 +148,7 @@ class _GovProfilePageState extends State<GovProfilePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel',
+              child: Text('No',
                   style: TextStyle(color: isDark ? Colors.white54 : Colors.black45)),
             ),
             ElevatedButton(
@@ -157,7 +158,7 @@ class _GovProfilePageState extends State<GovProfilePage> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Sign Out'),
+              child: const Text('Yes'),
             ),
           ],
         );
@@ -165,6 +166,12 @@ class _GovProfilePageState extends State<GovProfilePage> {
     );
     if (confirmed == true) {
       await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const GetStartedPage()),
+        (route) => false,
+      );
     }
   }
 
