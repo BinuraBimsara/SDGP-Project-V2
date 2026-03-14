@@ -166,7 +166,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         MaterialPageRoute(
           builder: (_) => ChatScreen(
             chatId: session.id,
-            otherUserName: _complaint.authorName,
+            otherUserName: session.citizenName.isNotEmpty
+                ? session.citizenName
+                : _complaint.authorName,
             isOfficial: true,
           ),
         ),
