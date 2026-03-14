@@ -33,7 +33,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen>
   GoogleMapController? _mapController;
   late LatLng _pickedLatLng;
   bool _isMapMoving = false;
-  bool _mapLoadFailed = false;
+  final bool _mapLoadFailed = false;
 
   // ── Address ──
   String _address = 'Move the map to set location';
