@@ -130,7 +130,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to start chat')),
+        );
+      }
+      return;
+    }
 
     setState(() => _isLaunchingChat = true);
 
@@ -159,7 +166,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         MaterialPageRoute(
           builder: (_) => ChatScreen(
             chatId: session.id,
-            otherUserName: _complaint.authorName,
+            otherUserName: session.citizenName.isNotEmpty
+                ? session.citizenName
+                : _complaint.authorName,
             isOfficial: true,
           ),
         ),
@@ -776,18 +785,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
-        floatingActionButton: _isOfficial
-            ? FloatingActionButton.extended(
-                onPressed: _openChatWithCitizen,
-                backgroundColor: const Color(0xFF2EAA5E),
-                icon: const Icon(Icons.chat_rounded, color: Colors.white),
-                label: const Text(
-                  'Contact Citizen',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-              )
-            : null,
         body: Column(
           children: [
             Expanded(
@@ -1037,6 +1034,41 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 ),
               ),
             ),
+
+            if (_isOfficial)
+              Container(
+                width: double.infinity,
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLaunchingChat ? null : _openChatWithCitizen,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2EAA5E),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: _isLaunchingChat
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.chat_rounded),
+                    label: Text(
+                      _isLaunchingChat ? 'Opening chat...' : 'Contact Citizen',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
 
             // Comment input bar
             Container(
