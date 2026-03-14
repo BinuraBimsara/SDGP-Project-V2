@@ -198,10 +198,17 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      final commentsSnapshot = await _complaintsRef
-          .doc(complaintId)
-          .collection('comments')
-          .get();
+      // Increment commentCount on the complaint document
+      try {
+        await _complaintsRef.doc(complaintId).update({
+          'commentCount': FieldValue.increment(1),
+        });
+      } catch (_) {
+        // Ignore if rules prevent count update; UI will use local count
+      }
+
+      final commentsSnapshot =
+          await _complaintsRef.doc(complaintId).collection('comments').get();
       return commentsSnapshot.docs.length;
     }
   }
@@ -218,8 +225,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       final data = doc.data();
       return {
         'id': doc.id,
-        'author':
-            data['authorName'] as String? ?? data['author'] as String? ?? 'Anonymous',
+        'author': data['authorName'] as String? ??
+            data['author'] as String? ??
+            'Anonymous',
         'authorId': data['authorId'] as String? ?? '',
         'text': data['text'] as String? ?? '',
         'parentCommentId': data['parentCommentId'] as String?,
@@ -255,9 +263,13 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     }
 
     // 3. Decrement commentCount by the number of deleted comments
-    await docRef.update({
-      'commentCount': FieldValue.increment(-idsToDelete.length),
-    });
+    try {
+      await docRef.update({
+        'commentCount': FieldValue.increment(-idsToDelete.length),
+      });
+    } catch (_) {
+      // Best-effort count sync; UI will refresh from subcollection count
+    }
   }
 
   @override
