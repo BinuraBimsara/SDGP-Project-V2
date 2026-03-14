@@ -176,6 +176,17 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     {'label': 'Other', 'icon': Icons.more_horiz},
   ];
 
+  String _normalizeCategory(String category) {
+    switch (category) {
+      case 'Road Damage':
+        return 'Road';
+      case 'Lighting':
+        return 'Other';
+      default:
+        return category;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -332,7 +343,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         id: '', // will be assigned by Firestore
         title: title,
         description: description,
-        category: _selectedCategory!,
+        category: _normalizeCategory(_selectedCategory!),
         status: 'Pending',
         upvoteCount: 0,
         commentCount: 0,
