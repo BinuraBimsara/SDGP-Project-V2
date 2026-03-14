@@ -31,8 +31,17 @@ class Comment {
   }) : replies = replies ?? [];
 }
 
-enum ComplaintDetailResult {
-  deleted,
+class ComplaintDetailResult {
+  final bool isDeleted;
+  final Complaint? updatedComplaint;
+
+  const ComplaintDetailResult._(
+      {this.isDeleted = false, this.updatedComplaint});
+
+  static const deleted = ComplaintDetailResult._(isDeleted: true);
+
+  factory ComplaintDetailResult.updated(Complaint complaint) =>
+      ComplaintDetailResult._(updatedComplaint: complaint);
 }
 
 class ComplaintDetailPage extends StatefulWidget {
@@ -546,18 +555,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComment(_complaint.id, comment.id);
       if (!mounted) return;
-      // Reload comments and update count
-      final updatedComplaints =
-          await _repository.getComplaintById(_complaint.id);
-      if (updatedComplaints != null && mounted) {
-        setState(() {
-          _complaint = _complaint.copyWith(
-            commentCount: updatedComplaints.commentCount,
-          );
-        });
-      }
+      // Reload comments to get fresh list
       await _loadComments();
+      // Update comment count from the actual loaded comments
       if (mounted) {
+        final totalComments = _countAllComments(_comments);
+        setState(() {
+          _complaint = _complaint.copyWith(commentCount: totalComments);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Comment deleted successfully'),
@@ -582,6 +587,15 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         );
       }
     }
+  }
+
+  /// Recursively count all comments including nested replies.
+  int _countAllComments(List<Comment> comments) {
+    int count = 0;
+    for (final c in comments) {
+      count += 1 + _countAllComments(c.replies);
+    }
+    return count;
   }
 
   void _showReportDialog() {
@@ -721,9 +735,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     final inputBg = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
 
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+        Navigator.pop(context, ComplaintDetailResult.updated(_complaint));
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -735,7 +750,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               size: 20,
               color: isDark ? Colors.white : Colors.black87,
             ),
-            onPressed: () => Navigator.pop(context, _complaint),
+            onPressed: () => Navigator.pop(context, ComplaintDetailResult.updated(_complaint)),
           ),
           title: Text(
             'Complaint Details',
@@ -964,7 +979,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Comments (${_comments.length})',
+                                  'Comments (${_complaint.commentCount})',
                                   style: TextStyle(
                                     color: textColor,
                                     fontSize: 17,

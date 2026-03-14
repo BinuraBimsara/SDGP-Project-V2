@@ -72,7 +72,8 @@ class _AnimatedReportDialog extends StatelessWidget {
     );
 
     // ── Scale: starts slightly smaller, springs to 1.0 ──
-    final scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnimation);
+    final scaleAnimation =
+        Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnimation);
 
     // ── Fade ──
     final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -313,6 +314,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       _showError('Please enter a title for your report.');
       return;
     }
+    if (title.length < 5) {
+      _showError('Title must be at least 5 characters.');
+      return;
+    }
+    if (title.length > 120) {
+      _showError('Title must be 120 characters or less.');
+      return;
+    }
     if (_selectedCategory == null) {
       _showError('Please select a category.');
       return;
@@ -323,6 +332,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     }
     if (description.isEmpty) {
       _showError('Please enter a description.');
+      return;
+    }
+    if (description.length < 10) {
+      _showError('Description must be at least 10 characters.');
+      return;
+    }
+    if (description.length > 1000) {
+      _showError('Description must be 1000 characters or less.');
       return;
     }
     if (_pickedImages.isEmpty) {
@@ -837,7 +854,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
               color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: hasCoords ? _accentGreen.withAlpha(100) : _borderColor(isDark),
+                color: hasCoords
+                    ? _accentGreen.withAlpha(100)
+                    : _borderColor(isDark),
               ),
             ),
             child: Row(
@@ -854,12 +873,13 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   child: _locationController.text.isEmpty
                       ? Text(
                           'Tap to pick location on map',
-                          style: TextStyle(color: _hintColor(isDark), fontSize: 14),
+                          style: TextStyle(
+                              color: _hintColor(isDark), fontSize: 14),
                         )
                       : Text(
                           _locationController.text,
-                          style:
-                              TextStyle(color: _textPrimary(isDark), fontSize: 14),
+                          style: TextStyle(
+                              color: _textPrimary(isDark), fontSize: 14),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -928,7 +948,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
               color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isCategoryExpanded ? _accentGreen : _borderColor(isDark),
+                color:
+                    _isCategoryExpanded ? _accentGreen : _borderColor(isDark),
                 width: _isCategoryExpanded ? 1.5 : 1,
               ),
             ),
@@ -948,7 +969,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                         ? selectedCat['label'] as String
                         : 'Select Category',
                     style: TextStyle(
-                      color: selectedCat != null ? _textPrimary(isDark) : _hintColor(isDark),
+                      color: selectedCat != null
+                          ? _textPrimary(isDark)
+                          : _hintColor(isDark),
                       fontSize: 14,
                     ),
                   ),
@@ -1010,7 +1033,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                             child: Text(
                               label,
                               style: TextStyle(
-                                color: isSelected ? _accentGreen : _textPrimary(isDark),
+                                color: isSelected
+                                    ? _accentGreen
+                                    : _textPrimary(isDark),
                                 fontSize: 14,
                                 fontWeight: isSelected
                                     ? FontWeight.w700

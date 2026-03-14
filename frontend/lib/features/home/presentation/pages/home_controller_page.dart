@@ -19,8 +19,6 @@ class HomeControllerPage extends StatefulWidget {
 class _HomeControllerPageState extends State<HomeControllerPage>
     with SingleTickerProviderStateMixin {
   int _currentNavIndex = 0;
-  // Key that changes on every tab switch to force page rebuild
-  Key _pageKey = UniqueKey();
   // Key for the theme toggle button to calculate tap position
   final GlobalKey _themeButtonKey = GlobalKey();
 
@@ -79,7 +77,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
   }
 
   void _switchTab(int index) {
-    // Re-tapping the Home tab: smooth scroll to top instead of rebuilding
+    // Re-tapping the Home tab: smooth scroll to top instead of switching
     if (index == 0 && _currentNavIndex == 0) {
       if (_feedScrollController.hasClients) {
         _feedScrollController.animateTo(
@@ -92,7 +90,6 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     }
     setState(() {
       _currentNavIndex = index;
-      _pageKey = UniqueKey();
       _userHasScrolledDown = false;
       _homeBounceController.stop();
       _homeBounceController.value = 0;
@@ -117,29 +114,13 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     });
   }
 
-  Widget _currentPage() {
-    switch (_currentNavIndex) {
-      case 0:
-        return HomeFeedPage(
-          key: _pageKey,
-          scrollController: _feedScrollController,
-        );
-      case 1:
-        return NotificationsPage(key: _pageKey);
-      case 2:
-        return MyReportsPage(
-          key: _pageKey,
-          onComplaintDeleted: _handleComplaintDeletedFromReports,
-        );
-      case 3:
-        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
-      default:
-        return HomeFeedPage(
-          key: _pageKey,
-          scrollController: _feedScrollController,
-        );
-    }
-  }
+  // Lazily built page list — created once, kept alive by IndexedStack
+  late final List<Widget> _pages = [
+    HomeFeedPage(scrollController: _feedScrollController),
+    const NotificationsPage(),
+    MyReportsPage(onComplaintDeleted: _handleComplaintDeletedFromReports),
+    ProfilePage(onSwitchTab: _switchTab),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +130,10 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       drawer: _buildDrawer(),
       body: NotificationListener<ScrollNotification>(
         onNotification: _onScrollNotification,
-        child: _currentPage(),
+        child: IndexedStack(
+          index: _currentNavIndex,
+          children: _pages,
+        ),
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
