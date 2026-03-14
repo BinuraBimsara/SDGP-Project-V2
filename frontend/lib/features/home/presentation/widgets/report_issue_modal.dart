@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -12,39 +13,127 @@ import 'package:spotit/main.dart';
 
 // ─── Helper: show the modal ─────────────────────────────────────────────────
 /// Call this from anywhere (e.g. FAB onPressed) to display the Report Issue
-/// dialog with a blurred background.
+/// dialog with a smooth OriginOS-style spring animation.
 void showReportIssueModal(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withAlpha(80),
-    builder: (_) => const _BlurredReportDialog(),
-  );
+  Navigator.of(context).push(_ReportIssueRoute());
 }
 
-// ─── Blurred backdrop wrapper ────────────────────────────────────────────────
-class _BlurredReportDialog extends StatelessWidget {
-  const _BlurredReportDialog();
+// ─── Custom route with OriginOS-style spring animation ───────────────────────
+
+class _ReportIssueRoute extends PageRouteBuilder {
+  _ReportIssueRoute()
+      : super(
+          opaque: false,
+          barrierDismissible: true,
+          barrierColor: Colors.transparent,
+          transitionDuration: const Duration(milliseconds: 550),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return _AnimatedReportDialog(animation: animation);
+          },
+        );
+}
+
+// ─── Animated blurred backdrop + modal ───────────────────────────────────────
+
+class _AnimatedReportDialog extends StatelessWidget {
+  final Animation<double> animation;
+
+  const _AnimatedReportDialog({required this.animation});
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 420,
-              maxHeight: MediaQuery.of(context).size.height * 0.90,
-            ),
-            child: const Material(
-              color: Colors.transparent,
-              child: ReportIssueModal(),
+
+    // ── Spring-style curved animation ──
+    final curvedAnimation = CurvedAnimation(
+      parent: animation,
+      curve: const _OriginOSCurve(),
+      reverseCurve: Curves.easeInQuart,
+    );
+
+    // ── Blur: 0 → 12 ──
+    final blurAnimation = Tween<double>(begin: 0, end: 12).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Background dim: transparent → semi-black ──
+    final dimAnimation = ColorTween(
+      begin: Colors.transparent,
+      end: Colors.black.withAlpha(90),
+    ).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Scale: starts slightly smaller, springs to 1.0 ──
+    final scaleAnimation =
+        Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnimation);
+
+    // ── Fade ──
+    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+      ),
+    );
+
+    // ── Slide up from bottom ──
+    final slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curvedAnimation);
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: blurAnimation.value,
+            sigmaY: blurAnimation.value,
+          ),
+          child: Container(
+            color: dimAnimation.value,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () {}, // absorb taps on the modal itself
+                    child: FadeTransition(
+                      opacity: fadeAnimation,
+                      child: SlideTransition(
+                        position: slideAnimation,
+                        child: ScaleTransition(
+                          scale: scaleAnimation,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: 420,
+                              maxHeight:
+                                  MediaQuery.of(context).size.height * 0.90,
+                            ),
+                            child: const Material(
+                              color: Colors.transparent,
+                              child: ReportIssueModal(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -87,6 +176,17 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     {'label': 'Lighting', 'icon': Icons.lightbulb_outline},
     {'label': 'Other', 'icon': Icons.more_horiz},
   ];
+
+  String _normalizeCategory(String category) {
+    switch (category) {
+      case 'Road Damage':
+        return 'Road';
+      case 'Lighting':
+        return 'Other';
+      default:
+        return category;
+    }
+  }
 
   @override
   void initState() {
@@ -214,6 +314,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
       _showError('Please enter a title for your report.');
       return;
     }
+    if (title.length < 5) {
+      _showError('Title must be at least 5 characters.');
+      return;
+    }
+    if (title.length > 120) {
+      _showError('Title must be 120 characters or less.');
+      return;
+    }
     if (_selectedCategory == null) {
       _showError('Please select a category.');
       return;
@@ -224,6 +332,14 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     }
     if (description.isEmpty) {
       _showError('Please enter a description.');
+      return;
+    }
+    if (description.length < 10) {
+      _showError('Description must be at least 10 characters.');
+      return;
+    }
+    if (description.length > 1000) {
+      _showError('Description must be 1000 characters or less.');
       return;
     }
     if (_pickedImages.isEmpty) {
@@ -244,7 +360,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         id: '', // will be assigned by Firestore
         title: title,
         description: description,
-        category: _selectedCategory!,
+        category: _normalizeCategory(_selectedCategory!),
         status: 'Pending',
         upvoteCount: 0,
         commentCount: 0,
@@ -293,29 +409,46 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     setState(() => _errorMessage = message);
   }
 
-  // ── Colors ──
-  static const _sheetBg = Color(0xFF141414);
-  static const _fieldFill = Color(0xFF1E1E1E);
+  // ── Accent (shared across both themes) ──
   static const _accentGreen = Color(0xFFF9A825);
-  static const _borderColor = Color(0xFF2A2A2A);
-  static const _textPrimary = Colors.white;
-  static final _textSecondary = Colors.white.withAlpha(153);
-  static final _hintColor = Colors.white.withAlpha(100);
+
+  // ── Theme-aware color helpers ──
+  Color _sheetBg(bool isDark) =>
+      isDark ? const Color(0xFF141414) : const Color(0xFFFFFFFF);
+
+  Color _fieldFill(bool isDark) =>
+      isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
+
+  Color _borderColor(bool isDark) =>
+      isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
+
+  Color _textPrimary(bool isDark) =>
+      isDark ? Colors.white : const Color(0xFF1A1A1A);
+
+  Color _textSecondary(bool isDark) =>
+      isDark ? Colors.white.withAlpha(153) : Colors.black.withAlpha(140);
+
+  Color _hintColor(bool isDark) =>
+      isDark ? Colors.white.withAlpha(100) : Colors.black.withAlpha(90);
 
   // ── Build ──
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       decoration: BoxDecoration(
-        color: _sheetBg,
+        color: _sheetBg(isDark),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: _borderColor(isDark)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(120),
+            color: isDark
+                ? Colors.black.withAlpha(120)
+                : Colors.black.withAlpha(40),
             blurRadius: 30,
-            spreadRadius: 4,
+            spreadRadius: isDark ? 4 : 1,
           ),
         ],
       ),
@@ -459,7 +592,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             color: _accentGreen.withAlpha(180),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
@@ -470,8 +603,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   strokeWidth: 2.5,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Uploading…',
                 style: TextStyle(
                   color: Colors.white,
@@ -513,18 +646,19 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Header: New Report ──
   Widget _buildHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: _borderColor),
+          bottom: BorderSide(color: _borderColor(isDark)),
         ),
       ),
-      child: const Text(
+      child: Text(
         'New Report',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: _textPrimary,
+          color: _textPrimary(isDark),
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -534,10 +668,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Section title ──
   Widget _sectionTitle(String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Text(
       text,
-      style: const TextStyle(
-        color: _textPrimary,
+      style: TextStyle(
+        color: _textPrimary(isDark),
         fontSize: 15,
         fontWeight: FontWeight.w700,
       ),
@@ -572,14 +707,15 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     required String label,
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: _fieldFill,
+          color: _fieldFill(isDark),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _borderColor),
+          border: Border.all(color: _borderColor(isDark)),
         ),
         child: Column(
           children: [
@@ -588,7 +724,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             Text(
               label,
               style: TextStyle(
-                color: _textSecondary,
+                color: _textSecondary(isDark),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -601,6 +737,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Image preview row ──
   Widget _buildImagePreviews() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 72,
       child: ListView.separated(
@@ -618,7 +755,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    border: Border.all(color: _borderColor),
+                    border: Border.all(color: _borderColor(isDark)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: kIsWeb
@@ -662,16 +799,17 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
     bool alignTop = false,
     FocusNode? focusNode,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
       focusNode: focusNode,
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: _textPrimary, fontSize: 14),
+      style: TextStyle(color: _textPrimary(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: _hintColor, fontSize: 14),
+        hintStyle: TextStyle(color: _hintColor(isDark), fontSize: 14),
         filled: true,
-        fillColor: _fieldFill,
+        fillColor: _fieldFill(isDark),
         prefixIcon: Padding(
           padding: EdgeInsets.only(
             top: alignTop ? 14 : 0,
@@ -686,11 +824,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: _borderColor(isDark)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: _borderColor(isDark)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -702,6 +840,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Premium Location field ──
   Widget _buildLocationField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasCoords = _latitude != null && _longitude != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,10 +851,12 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: _fieldFill,
+              color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: hasCoords ? _accentGreen.withAlpha(100) : _borderColor,
+                color: hasCoords
+                    ? _accentGreen.withAlpha(100)
+                    : _borderColor(isDark),
               ),
             ),
             child: Row(
@@ -732,12 +873,13 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   child: _locationController.text.isEmpty
                       ? Text(
                           'Tap to pick location on map',
-                          style: TextStyle(color: _hintColor, fontSize: 14),
+                          style: TextStyle(
+                              color: _hintColor(isDark), fontSize: 14),
                         )
                       : Text(
                           _locationController.text,
-                          style:
-                              const TextStyle(color: _textPrimary, fontSize: 14),
+                          style: TextStyle(
+                              color: _textPrimary(isDark), fontSize: 14),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -774,7 +916,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
             child: Text(
               '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}',
               style: TextStyle(
-                color: Colors.white.withAlpha(60),
+                color: isDark
+                    ? Colors.white.withAlpha(60)
+                    : Colors.black.withAlpha(60),
                 fontSize: 11,
                 fontFamily: 'monospace',
               ),
@@ -786,6 +930,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
 
   // ── Category expandable dropdown ──
   Widget _buildCategoryDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedCat = _categories.cast<Map<String, dynamic>?>().firstWhere(
           (c) => c!['label'] == _selectedCategory,
           orElse: () => null,
@@ -800,10 +945,11 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: _fieldFill,
+              color: _fieldFill(isDark),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isCategoryExpanded ? _accentGreen : _borderColor,
+                color:
+                    _isCategoryExpanded ? _accentGreen : _borderColor(isDark),
                 width: _isCategoryExpanded ? 1.5 : 1,
               ),
             ),
@@ -823,7 +969,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                         ? selectedCat['label'] as String
                         : 'Select Category',
                     style: TextStyle(
-                      color: selectedCat != null ? _textPrimary : _hintColor,
+                      color: selectedCat != null
+                          ? _textPrimary(isDark)
+                          : _hintColor(isDark),
                       fontSize: 14,
                     ),
                   ),
@@ -833,7 +981,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: _hintColor,
+                    color: _hintColor(isDark),
                     size: 22,
                   ),
                 ),
@@ -869,12 +1017,12 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? _accentGreen.withAlpha(40)
-                            : _fieldFill,
+                            : _fieldFill(isDark),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
                               ? _accentGreen.withAlpha(120)
-                              : _borderColor,
+                              : _borderColor(isDark),
                         ),
                       ),
                       child: Row(
@@ -885,7 +1033,9 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                             child: Text(
                               label,
                               style: TextStyle(
-                                color: isSelected ? _accentGreen : _textPrimary,
+                                color: isSelected
+                                    ? _accentGreen
+                                    : _textPrimary(isDark),
                                 fontSize: 14,
                                 fontWeight: isSelected
                                     ? FontWeight.w700
@@ -914,5 +1064,21 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         ),
       ],
     );
+  }
+}
+
+// ─── OriginOS-style spring curve ─────────────────────────────────────────────
+/// A custom curve that overshoots slightly then settles, mimicking the fluid
+/// spring animation seen in OriginOS app launches.
+class _OriginOSCurve extends Curve {
+  const _OriginOSCurve();
+
+  @override
+  double transformInternal(double t) {
+    // Spring-like formula: overshoots to ~1.02 then settles to 1.0
+    // Using a damped spring: 1 - e^(-6t) * cos(2.5πt)
+    final double dampedSpring =
+        1.0 - math.exp(-6.0 * t) * math.cos(2.5 * math.pi * t);
+    return dampedSpring;
   }
 }

@@ -33,10 +33,14 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
 
   // Category definitions matching the report function
   static const List<Map<String, dynamic>> _categories = [
-    {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
+    {
+      'label': 'Road Damage',
+      'queryCategory': 'Road',
+      'icon': Icons.remove_road,
+      'color': Color(0xFFE91E63),
+    },
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
-    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -342,11 +346,13 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
         runSpacing: 14,
         alignment: WrapAlignment.center,
         children: _categories.map((cat) {
-          final count = _countByCategory(cat['label'] as String);
+          final queryCategory = (cat['queryCategory'] as String?) ?? (cat['label'] as String);
+          final count = _countByCategory(queryCategory);
           return SizedBox(
             width: (MediaQuery.of(context).size.width - 40 - 28) / 3,
             child: _buildCategoryTile(
               label: cat['label'] as String,
+              queryCategory: queryCategory,
               icon: cat['icon'] as IconData,
               color: cat['color'] as Color,
               count: count,
@@ -360,6 +366,7 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
 
   Widget _buildCategoryTile({
     required String label,
+    required String queryCategory,
     required IconData icon,
     required Color color,
     required int count,
@@ -372,7 +379,10 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
           MaterialPageRoute(
             builder: (_) => RepositoryProvider(
               repository: RepositoryProvider.of(context),
-              child: GovCategoryReportsPage(category: label),
+              child: GovCategoryReportsPage(
+                category: queryCategory,
+                title: label,
+              ),
             ),
           ),
         ).then((_) => _loadComplaints());

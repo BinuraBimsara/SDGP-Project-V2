@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
@@ -18,34 +19,108 @@ class HomeControllerPage extends StatefulWidget {
 class _HomeControllerPageState extends State<HomeControllerPage>
     with SingleTickerProviderStateMixin {
   int _currentNavIndex = 0;
-  // Key that changes on every tab switch to force page rebuild
-  Key _pageKey = UniqueKey();
   // Key for the theme toggle button to calculate tap position
   final GlobalKey _themeButtonKey = GlobalKey();
 
-  void _switchTab(int index) {
-    if (index != _currentNavIndex) {
-      setState(() {
-        _currentNavIndex = index;
-        _pageKey = UniqueKey();
-      });
+  // ── Scroll-aware Home-button continuous bounce animation ──
+  late AnimationController _homeBounceController;
+  late Animation<double> _homeBounceAnimation;
+  bool _userHasScrolledDown = false;
+
+  // ── Shared ScrollController for HomeFeedPage ──
+  final ScrollController _feedScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _homeBounceController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    // Subtle continuous pulse: 1.0 ↔ 1.15
+    _homeBounceAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(
+        parent: _homeBounceController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Start listening for chat unread counts.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      NotificationBadge.startChatUnreadListener(user.uid);
     }
   }
 
-  Widget _currentPage() {
-    switch (_currentNavIndex) {
-      case 0:
-        return HomeFeedPage(key: _pageKey);
-      case 1:
-        return NotificationsPage(key: _pageKey);
-      case 2:
-        return MyReportsPage(key: _pageKey);
-      case 3:
-        return ProfilePage(key: _pageKey, onSwitchTab: _switchTab);
-      default:
-        return HomeFeedPage(key: _pageKey);
-    }
+  @override
+  void dispose() {
+    NotificationBadge.stopChatUnreadListener();
+    _homeBounceController.dispose();
+    _feedScrollController.dispose();
+    super.dispose();
   }
+
+  /// Handles scroll notifications from child pages to detect scrolling.
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (_currentNavIndex != 0) return false;
+    final offset = notification.metrics.pixels;
+    if (offset > 200 && !_userHasScrolledDown) {
+      _userHasScrolledDown = true;
+      _homeBounceController.repeat(reverse: true);
+    } else if (offset <= 200 && _userHasScrolledDown) {
+      _userHasScrolledDown = false;
+      _homeBounceController.stop();
+      _homeBounceController.animateTo(0,
+          duration: const Duration(milliseconds: 200));
+    }
+    return false;
+  }
+
+  void _switchTab(int index) {
+    // Re-tapping the Home tab: smooth scroll to top instead of switching
+    if (index == 0 && _currentNavIndex == 0) {
+      if (_feedScrollController.hasClients) {
+        _feedScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+      return;
+    }
+    setState(() {
+      _currentNavIndex = index;
+      _userHasScrolledDown = false;
+      _homeBounceController.stop();
+      _homeBounceController.value = 0;
+    });
+  }
+
+  /// Called when a complaint is deleted from My Reports detail view.
+  void _handleComplaintDeletedFromReports() {
+    _switchTab(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Complaint deleted successfully'),
+          backgroundColor: const Color(0xFFF9A825),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    });
+  }
+
+  // Lazily built page list — created once, kept alive by IndexedStack
+  late final List<Widget> _pages = [
+    HomeFeedPage(scrollController: _feedScrollController),
+    const NotificationsPage(),
+    MyReportsPage(onComplaintDeleted: _handleComplaintDeletedFromReports),
+    ProfilePage(onSwitchTab: _switchTab),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +128,13 @@ class _HomeControllerPageState extends State<HomeControllerPage>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       drawer: _buildDrawer(),
-      body: _currentPage(),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: IndexedStack(
+          index: _currentNavIndex,
+          children: _pages,
+        ),
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -284,7 +365,12 @@ class _HomeControllerPageState extends State<HomeControllerPage>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
+              _buildNavItem(
+                icon: Icons.home_rounded,
+                label: 'Home',
+                index: 0,
+                scaleAnimation: _homeBounceAnimation,
+              ),
               ValueListenableBuilder<int>(
                 valueListenable: NotificationBadge.unreadCount,
                 builder: (context, count, child) {
@@ -342,6 +428,7 @@ class _HomeControllerPageState extends State<HomeControllerPage>
     required String label,
     required int index,
     int badgeCount = 0,
+    Animation<double>? scaleAnimation,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isActive = _currentNavIndex == index;
@@ -358,11 +445,23 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(
-                  icon,
-                  color: isActive ? const Color(0xFFF9A825) : inactiveColor,
-                  size: 24,
-                ),
+                scaleAnimation != null
+                    ? ScaleTransition(
+                        scale: scaleAnimation,
+                        child: Icon(
+                          icon,
+                          color: isActive
+                              ? const Color(0xFFF9A825)
+                              : inactiveColor,
+                          size: 24,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color:
+                            isActive ? const Color(0xFFF9A825) : inactiveColor,
+                        size: 24,
+                      ),
                 if (badgeCount > 0)
                   Positioned(
                     right: -6,

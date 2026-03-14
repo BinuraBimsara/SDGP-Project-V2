@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
@@ -8,6 +10,8 @@ import 'package:spotit/features/auth/presentation/pages/complete_profile_page.da
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
 import 'package:spotit/features/complaints/data/repositories/firestore_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/features/chat/data/repositories/firestore_chat_repository.dart';
+import 'package:spotit/features/chat/domain/repositories/chat_repository.dart';
 import 'package:spotit/core/theme/theme_switcher.dart';
 
 // ─── Repository Provider ─────────────────────────────────────────────────────
@@ -34,6 +38,28 @@ class RepositoryProvider extends InheritedWidget {
       repository != oldWidget.repository;
 }
 
+/// InheritedWidget that provides a [ChatRepository] down the tree.
+class ChatRepositoryProvider extends InheritedWidget {
+  final ChatRepository chatRepository;
+
+  const ChatRepositoryProvider({
+    super.key,
+    required this.chatRepository,
+    required super.child,
+  });
+
+  static ChatRepository of(BuildContext context) {
+    final provider =
+        context.dependOnInheritedWidgetOfExactType<ChatRepositoryProvider>();
+    assert(provider != null, 'No ChatRepositoryProvider found in context');
+    return provider!.chatRepository;
+  }
+
+  @override
+  bool updateShouldNotify(ChatRepositoryProvider oldWidget) =>
+      chatRepository != oldWidget.chatRepository;
+}
+
 // ─── App Entry Point ─────────────────────────────────────────────────────────
 
 Future<void> main() async {
@@ -41,6 +67,23 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  if (kIsWeb) {
+    const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
+    if (recaptchaSiteKey.isNotEmpty) {
+      await FirebaseAppCheck.instance.activate(
+        webProvider: ReCaptchaV3Provider(recaptchaSiteKey),
+      );
+    }
+  } else {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider:
+          kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode
+          ? AppleProvider.debug
+          : AppleProvider.appAttestWithDeviceCheckFallback,
+    );
+  }
 
   // Enable Firestore offline persistence for instant data loading
   FirebaseFirestore.instance.settings = const Settings(
@@ -50,7 +93,10 @@ Future<void> main() async {
   runApp(
     RepositoryProvider(
       repository: FirestoreComplaintRepository(),
-      child: const SpotItApp(),
+      child: ChatRepositoryProvider(
+        chatRepository: FirestoreChatRepository(),
+        child: const SpotItApp(),
+      ),
     ),
   );
 }

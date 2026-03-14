@@ -386,11 +386,11 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
             const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _fieldBorder, width: 1.2),
+          borderSide: const BorderSide(color: _fieldBorder, width: 1.2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _fieldBorder, width: 1.2),
+          borderSide: const BorderSide(color: _fieldBorder, width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

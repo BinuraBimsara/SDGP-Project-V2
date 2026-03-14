@@ -11,7 +11,9 @@ import 'package:spotit/features/home/presentation/widgets/location_picker_screen
 import 'package:spotit/main.dart';
 
 class HomeFeedPage extends StatefulWidget {
-  const HomeFeedPage({super.key});
+  final ScrollController? scrollController;
+
+  const HomeFeedPage({super.key, this.scrollController});
 
   @override
   State<HomeFeedPage> createState() => _HomeFeedPageState();
@@ -511,6 +513,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
 
     if (_complaints.isEmpty) {
       return ListView(
+        controller: widget.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
@@ -553,6 +556,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: ListView.builder(
+        controller: widget.scrollController,
         key: ValueKey(_selectedFilter),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 8, bottom: 16),
@@ -578,16 +582,38 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
               _repository.toggleUpvote(_complaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push(
+              final messenger = ScaffoldMessenger.of(context);
+              final result = await Navigator.push<ComplaintDetailResult>(
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
                       ComplaintDetailPage(complaint: _complaints[index]),
                 ),
               );
-              if (result != null) {
-                // Reload complaints to get fresh data from Firebase
+              if (!mounted) return;
+              if (result != null && result.isDeleted) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: const Text('Complaint deleted successfully'),
+                    backgroundColor: const Color(0xFFF9A825),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
                 _loadComplaints();
+                return;
+              }
+              // Immediately update local complaint with fresh data from detail page
+              if (result?.updatedComplaint != null) {
+                setState(() {
+                  final idx = _complaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (idx >= 0) {
+                    _complaints[idx] = result!.updatedComplaint!;
+                  }
+                });
               }
             },
           );

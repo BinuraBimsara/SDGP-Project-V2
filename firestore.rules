@@ -12,6 +12,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isSelfUnchanged(uid) {
+      return resource.data.authorId == uid && request.resource.data.authorId == uid;
+    }
+
     function getUserRole() {
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
@@ -19,17 +23,72 @@ service cloud.firestore {
     }
 
     function isGovernment() {
-      return isSignedIn() && getUserRole() == 'government';
+      return isSignedIn() && (
+        getUserRole() == 'government' ||
+        getUserRole() == 'official'
+      );
+    }
+
+    function isValidStatus(status) {
+      return status in ['Pending', 'In Progress', 'Resolved'];
+    }
+
+    function isValidCategory(category) {
+      return category in [
+        'Road', 'Road Damage', 'Infrastructure', 'Waste', 'Lighting', 'Other'
+      ];
+    }
+
+    function isComplaintOwner(complaintId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/complaints/$(complaintId)).data.authorId == request.auth.uid;
+    }
+
+    function isValidString(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function isValidOptionalString(value, max) {
+      return value == null || (value is string && value.size() <= max);
+    }
+
+    function isValidGeoPoint(lat, lng) {
+      return (
+        (lat == null && lng == null) ||
+        (
+          lat is number && lng is number &&
+          lat >= -90 && lat <= 90 &&
+          lng >= -180 && lng <= 180
+        )
+      );
     }
 
     // ── Users collection ─────────────────────────────────────────────
     match /users/{userId} {
       // Users can read their own profile; government can read any
       allow read: if isOwner(userId) || isGovernment();
-      // Allow a new user to create their own profile document
-      allow create: if isOwner(userId);
-      // Only Cloud Functions (admin SDK) can update/delete profiles
-      allow update, delete: if false;
+
+      // New users can create their own profile but cannot self-assign privileged roles.
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly([
+          'displayName', 'email', 'photoURL', 'photoUrl', 'role', 'createdAt',
+          'firstName', 'lastName', 'phone', 'profileCompleted',
+          'position', 'workplace', 'branch', 'fcmToken'
+        ]) &&
+        request.resource.data.role == 'citizen';
+
+      // Profile owners can edit personal fields only; role/escalation is blocked.
+      allow update: if isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'displayName', 'photoURL', 'photoUrl', 'firstName', 'lastName',
+          'phone', 'profileCompleted', 'position', 'workplace', 'branch', 'fcmToken'
+        ]);
+
+      // Only trusted backend should remove user profiles.
+      allow delete: if false;
 
       // Notifications subcollection
       match /notifications/{notifId} {
@@ -40,17 +99,69 @@ service cloud.firestore {
 
     // ── Complaints collection ────────────────────────────────────────
     match /complaints/{complaintId} {
-      // Anyone signed in can read complaints
-      allow read: if isSignedIn();
-      // Citizens can create complaints
-      allow create: if isSignedIn();
-      // Only the author can update their own, or government
-      allow update: if isSignedIn() && (
-        resource.data.authorId == request.auth.uid ||
-        isGovernment()
-      );
-      // Only government can delete
-      allow delete: if isGovernment();
+      // In testing, allow reading complaints without auth.
+      allow read: if true;
+
+      // Complaint creation with strict schema and ownership checks.
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly([
+          'title', 'description', 'category', 'imageUrl', 'imageUrls',
+          'status', 'upvoteCount', 'commentCount', 'timestamp', 'authorId',
+          'authorName', 'locationName', 'latitude', 'longitude', 'createdAt'
+        ]) &&
+        request.resource.data.authorId == request.auth.uid &&
+        isValidString(request.resource.data.title, 5, 120) &&
+        isValidString(request.resource.data.description, 10, 1000) &&
+        isValidCategory(request.resource.data.category) &&
+        isValidStatus(request.resource.data.status) &&
+        request.resource.data.upvoteCount == 0 &&
+        request.resource.data.commentCount == 0 &&
+        request.resource.data.authorName is string &&
+        isValidOptionalString(request.resource.data.locationName, 120) &&
+        isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude);
+
+      // Authors can only edit non-sensitive fields of their own complaint.
+      allow update: if
+        (
+          isSignedIn() &&
+          isSelfUnchanged(request.auth.uid) &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.upvoteCount == resource.data.upvoteCount &&
+          request.resource.data.commentCount == resource.data.commentCount &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'title', 'description', 'category', 'imageUrl', 'imageUrls',
+            'authorName', 'locationName', 'latitude', 'longitude'
+          ]) &&
+          isValidString(request.resource.data.title, 5, 120) &&
+          isValidString(request.resource.data.description, 10, 1000) &&
+          isValidCategory(request.resource.data.category) &&
+          isValidOptionalString(request.resource.data.locationName, 120) &&
+          isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude)
+        )
+        ||
+        (
+          isSignedIn() &&
+          isGovernment() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
+          isValidStatus(request.resource.data.status)
+        )
+        ||
+        (
+          // Testing mode: allow status-only updates without auth flow.
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
+          isValidStatus(request.resource.data.status)
+        )
+        ||
+        (
+          // Allow signed-in users to update commentCount (for comment add/delete sync).
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['commentCount']) &&
+          request.resource.data.commentCount is int &&
+          request.resource.data.commentCount >= 0
+        );
+
+      // Government or complaint owner can delete.
+      allow delete: if isGovernment() || isComplaintOwner(complaintId);
 
       // Upvotes subcollection
       match /upvotes/{upvoteId} {
@@ -60,11 +171,24 @@ service cloud.firestore {
 
       // Comments subcollection
       match /comments/{commentId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow read: if true;
+
+        // Allow signed-in users to create their own comments with strict schema.
+        allow create: if isSignedIn() &&
+          request.resource.data.keys().hasOnly([
+            'authorId', 'authorName', 'text', 'parentCommentId', 'isOfficial', 'timestamp'
+          ]) &&
+          request.resource.data.authorId == request.auth.uid &&
+          isValidString(request.resource.data.authorName, 1, 120) &&
+          isValidString(request.resource.data.text, 1, 1000) &&
+          (request.resource.data.parentCommentId == null ||
+            request.resource.data.parentCommentId is string) &&
+          request.resource.data.isOfficial is bool;
+
         allow update, delete: if isSignedIn() && (
           resource.data.authorId == request.auth.uid ||
-          isGovernment()
+          isGovernment() ||
+          isComplaintOwner(complaintId)
         );
       }
     }

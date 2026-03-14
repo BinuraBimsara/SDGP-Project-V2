@@ -8,7 +8,9 @@ import 'package:spotit/features/home/presentation/widgets/complaint_card.dart';
 import 'package:spotit/main.dart';
 
 class MyReportsPage extends StatefulWidget {
-  const MyReportsPage({super.key});
+  final VoidCallback? onComplaintDeleted;
+
+  const MyReportsPage({super.key, this.onComplaintDeleted});
 
   @override
   State<MyReportsPage> createState() => _MyReportsPageState();
@@ -457,15 +459,32 @@ class _MyReportsPageState extends State<MyReportsPage> {
               _repository.toggleUpvote(_filteredComplaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push<Complaint>(
+              final result = await Navigator.push<ComplaintDetailResult>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ComplaintDetailPage(
                       complaint: _filteredComplaints[index]),
                 ),
               );
-              if (result != null) {
-                _loadMyReports();
+              if (!mounted) return;
+              if (result != null && result.isDeleted) {
+                widget.onComplaintDeleted?.call();
+                return;
+              }
+              // Immediately update local complaint with fresh data from detail page
+              if (result?.updatedComplaint != null) {
+                setState(() {
+                  final idx = _allComplaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (idx >= 0) {
+                    _allComplaints[idx] = result!.updatedComplaint!;
+                  }
+                  final fIdx = _filteredComplaints.indexWhere(
+                      (c) => c.id == result!.updatedComplaint!.id);
+                  if (fIdx >= 0) {
+                    _filteredComplaints[fIdx] = result!.updatedComplaint!;
+                  }
+                });
               }
             },
           );

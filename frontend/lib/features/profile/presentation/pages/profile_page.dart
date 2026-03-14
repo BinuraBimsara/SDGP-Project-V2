@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +27,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // Edit profile controllers
   final _editFirstNameController = TextEditingController();
   final _editLastNameController = TextEditingController();
+  final _editPhoneController = TextEditingController();
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     _editFirstNameController.dispose();
     _editLastNameController.dispose();
+    _editPhoneController.dispose();
     super.dispose();
   }
 
@@ -161,12 +165,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const accent = Color(0xFFF9A825);
-    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final dialogBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final fieldBg = isDark ? const Color(0xFF2A2A2A) : Colors.grey[100];
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.black.withValues(alpha: 0.1);
+    final subtextColor = isDark ? Colors.white60 : Colors.black45;
+    final fieldBg = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
 
     // Pre-fill from Firestore first, fallback to Auth displayName
     try {
@@ -178,17 +180,20 @@ class _ProfilePageState extends State<ProfilePage> {
         final data = doc.data()!;
         _editFirstNameController.text = data['firstName'] ?? '';
         _editLastNameController.text = data['lastName'] ?? '';
+        _editPhoneController.text = data['phone'] ?? '';
       } else {
         final parts = (user.displayName ?? '').split(' ');
         _editFirstNameController.text = parts.isNotEmpty ? parts.first : '';
         _editLastNameController.text =
             parts.length > 1 ? parts.sublist(1).join(' ') : '';
+        _editPhoneController.text = '';
       }
     } catch (_) {
       final parts = (user.displayName ?? '').split(' ');
       _editFirstNameController.text = parts.isNotEmpty ? parts.first : '';
       _editLastNameController.text =
           parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      _editPhoneController.text = '';
     }
 
     final formKey = GlobalKey<FormState>();
@@ -196,252 +201,273 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (!mounted) return;
 
-    await showModalBottomSheet(
+    await showGeneralDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withAlpha(80),
+      transitionDuration: const Duration(milliseconds: 250),
+      transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
+        final curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: anim,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved),
+              child: dialogChild,
+            ),
+          ),
+        );
+      },
+      pageBuilder: (ctx, anim, secondaryAnim) {
         return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Drag handle
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[700] : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(2),
+          builder: (context, setDialogState) {
+            return Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: dialogBg,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 30,
+                            offset: const Offset(0, 10),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-
-                      // Title
-                      Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Update your display name.',
-                        style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.black45,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // First Name
-                      Text(
-                        'First Name',
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _editFirstNameController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          hintText: 'Enter first name',
-                          hintStyle: TextStyle(
-                            color: isDark ? Colors.white38 : Colors.black38,
-                          ),
-                          filled: true,
-                          fillColor: fieldBg,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: borderColor, width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: borderColor, width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                const BorderSide(color: accent, width: 1.5),
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'First name is required';
-                          }
-                          if (v.trim().length < 2) {
-                            return 'Must be at least 2 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Last Name
-                      Text(
-                        'Last Name',
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _editLastNameController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          hintText: 'Enter last name',
-                          hintStyle: TextStyle(
-                            color: isDark ? Colors.white38 : Colors.black38,
-                          ),
-                          filled: true,
-                          fillColor: fieldBg,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: borderColor, width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: borderColor, width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                const BorderSide(color: accent, width: 1.5),
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Last name is required';
-                          }
-                          if (v.trim().length < 2) {
-                            return 'Must be at least 2 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Save button
-                      SizedBox(
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: isSaving
-                              ? null
-                              : () async {
-                                  if (!formKey.currentState!.validate()) return;
-
-                                  setSheetState(() => isSaving = true);
-
-                                  try {
-                                    final firstName =
-                                        _editFirstNameController.text.trim();
-                                    final lastName =
-                                        _editLastNameController.text.trim();
-                                    final fullName = '$firstName $lastName';
-
-                                    // Update Firebase Auth display name
-                                    await user.updateDisplayName(fullName);
-                                    await user.reload();
-
-                                    // Update Firestore user document
-                                    await FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(user.uid)
-                                        .set({
-                                      'firstName': firstName,
-                                      'lastName': lastName,
-                                      'displayName': fullName,
-                                    }, SetOptions(merge: true));
-
-                                    if (!context.mounted) return;
-                                    Navigator.pop(context);
-
-                                    // Refresh the profile page
-                                    if (mounted) setState(() {});
-
-                                    ScaffoldMessenger.of(this.context)
-                                        .showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Profile updated successfully'),
-                                        backgroundColor: accent,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    setSheetState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            'Failed to update: ${e.toString()}'),
-                                        backgroundColor: Colors.redAccent,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor:
-                                accent.withValues(alpha: 0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                      child: Form(
+                        key: formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ── Header icon ──
+                            const Icon(Icons.edit_note_rounded,
+                                color: accent, size: 32),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Edit Profile',
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            elevation: 0,
-                          ),
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Update your profile information',
+                              style: TextStyle(
+                                color: subtextColor,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ── Email (read-only) ──
+                            _buildEditRow(
+                              icon: Icons.email_outlined,
+                              label: user.email ?? '',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              isReadOnly: true,
+                              accent: accent,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 10),
+
+                            // ── First Name ──
+                            _buildEditField(
+                              controller: _editFirstNameController,
+                              icon: Icons.person_outline,
+                              hint: 'First Name',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'First name is required';
+                                }
+                                if (v.trim().length < 2) {
+                                  return 'Must be at least 2 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+
+                            // ── Last Name ──
+                            _buildEditField(
+                              controller: _editLastNameController,
+                              icon: Icons.person_outline,
+                              hint: 'Last Name',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Last name is required';
+                                }
+                                if (v.trim().length < 2) {
+                                  return 'Must be at least 2 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+
+                            // ── Phone Number ──
+                            _buildEditField(
+                              controller: _editPhoneController,
+                              icon: Icons.phone_outlined,
+                              hint: 'Phone Number',
+                              fieldBg: fieldBg,
+                              textColor: textColor,
+                              accent: accent,
+                              isDark: isDark,
+                              keyboardType: TextInputType.phone,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Phone number is required';
+                                }
+                                final cleaned =
+                                    v.trim().replaceAll(RegExp(r'[\s\-()]'), '');
+                                if (cleaned.length < 9 ||
+                                    cleaned.length > 15) {
+                                  return 'Enter a valid phone number';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ── Save button ──
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () async {
+                                        if (!formKey.currentState!.validate()) {
+                                          return;
+                                        }
+
+                                        setDialogState(
+                                            () => isSaving = true);
+
+                                        try {
+                                          final firstName =
+                                              _editFirstNameController.text
+                                                  .trim();
+                                          final lastName =
+                                              _editLastNameController.text
+                                                  .trim();
+                                          final fullName =
+                                              '$firstName $lastName';
+
+                                          await user
+                                              .updateDisplayName(fullName);
+                                          await user.reload();
+
+                                          await FirebaseFirestore.instance
+                                              .collection('users')
+                                              .doc(user.uid)
+                                              .set({
+                                            'firstName': firstName,
+                                            'lastName': lastName,
+                                            'displayName': fullName,
+                                            'phone': _editPhoneController
+                                                .text
+                                                .trim(),
+                                          }, SetOptions(merge: true));
+
+                                          if (!context.mounted) return;
+                                          Navigator.pop(context);
+
+                                          if (mounted) setState(() {});
+
+                                          ScaffoldMessenger.of(this.context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Profile updated successfully'),
+                                              backgroundColor: accent,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          setDialogState(
+                                              () => isSaving = false);
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'Failed to update: ${e.toString()}'),
+                                              backgroundColor:
+                                                  Colors.redAccent,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: accent,
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor:
+                                      accent.withValues(alpha: 0.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
-                                )
-                              : const Text(
-                                  'Save Changes',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  elevation: 0,
                                 ),
+                                child: isSaving
+                                    ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Save Changes',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            // ── Close button ──
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                'Close',
+                                style: TextStyle(
+                                  color: subtextColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -449,6 +475,106 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         );
       },
+    );
+  }
+
+  /// Read-only row for email display.
+  Widget _buildEditRow({
+    required IconData icon,
+    required String label,
+    required Color fieldBg,
+    required Color textColor,
+    required Color accent,
+    required bool isDark,
+    bool isReadOnly = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: fieldBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon,
+              color: isReadOnly
+                  ? (isDark ? Colors.white38 : Colors.black26)
+                  : accent,
+              size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isReadOnly
+                    ? (isDark ? Colors.white38 : Colors.black38)
+                    : textColor,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          if (isReadOnly)
+            Icon(Icons.lock_outline,
+                color: isDark ? Colors.white24 : Colors.black12, size: 16),
+        ],
+      ),
+    );
+  }
+
+  /// Editable text field row matching the dialog card style.
+  Widget _buildEditField({
+    required TextEditingController controller,
+    required IconData icon,
+    required String hint,
+    required Color fieldBg,
+    required Color textColor,
+    required Color accent,
+    required bool isDark,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: textColor, fontSize: 15),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          color: isDark ? Colors.white30 : Colors.black26,
+          fontSize: 15,
+        ),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 10),
+          child: Icon(icon, color: accent, size: 20),
+        ),
+        prefixIconConstraints:
+            const BoxConstraints(minWidth: 42, minHeight: 0),
+        filled: true,
+        fillColor: fieldBg,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+      ),
     );
   }
 

@@ -9,16 +9,19 @@ enum ReportSortMode {
   highestPriority,
   lowestPriority,
   latest,
-  mostUpvoted,
-  mostDownvoted,
 }
 
 /// Page that shows all reports under a specific category.
 /// Default sort: highest priority (most upvotes first).
 class GovCategoryReportsPage extends StatefulWidget {
   final String category;
+  final String? title;
 
-  const GovCategoryReportsPage({super.key, required this.category});
+  const GovCategoryReportsPage({
+    super.key,
+    required this.category,
+    this.title,
+  });
 
   @override
   State<GovCategoryReportsPage> createState() => _GovCategoryReportsPageState();
@@ -30,18 +33,16 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
   ReportSortMode _sortMode = ReportSortMode.highestPriority;
 
   static const Map<String, Color> _categoryColors = {
-    'Road Damage': Color(0xFFE91E63),
+    'Road': Color(0xFFE91E63),
     'Infrastructure': Color(0xFF2196F3),
     'Waste': Color(0xFF4CAF50),
-    'Lighting': Color(0xFFFF9800),
     'Other': Color(0xFF607D8B),
   };
 
   static const Map<String, IconData> _categoryIcons = {
-    'Road Damage': Icons.remove_road,
+    'Road': Icons.remove_road,
     'Infrastructure': Icons.construction,
     'Waste': Icons.delete_outline,
-    'Lighting': Icons.lightbulb_outline,
     'Other': Icons.more_horiz,
   };
 
@@ -79,12 +80,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
       case ReportSortMode.latest:
         _complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         break;
-      case ReportSortMode.mostUpvoted:
-        _complaints.sort((a, b) => b.upvoteCount.compareTo(a.upvoteCount));
-        break;
-      case ReportSortMode.mostDownvoted:
-        _complaints.sort((a, b) => a.upvoteCount.compareTo(b.upvoteCount));
-        break;
     }
   }
 
@@ -96,10 +91,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
         return 'Lowest Priority';
       case ReportSortMode.latest:
         return 'Latest';
-      case ReportSortMode.mostUpvoted:
-        return 'Most Upvoted';
-      case ReportSortMode.mostDownvoted:
-        return 'Most Downvoted';
     }
   }
 
@@ -111,10 +102,6 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
         return Icons.arrow_downward;
       case ReportSortMode.latest:
         return Icons.access_time;
-      case ReportSortMode.mostUpvoted:
-        return Icons.thumb_up_outlined;
-      case ReportSortMode.mostDownvoted:
-        return Icons.thumb_down_outlined;
     }
   }
 
@@ -138,6 +125,7 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final displayTitle = widget.title ?? widget.category;
     final catColor = _categoryColors[widget.category] ?? const Color(0xFF607D8B);
     final catIcon = _categoryIcons[widget.category] ?? Icons.more_horiz;
 
@@ -160,7 +148,7 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
             Icon(catIcon, color: catColor, size: 22),
             const SizedBox(width: 8),
             Text(
-              widget.category,
+              displayTitle,
               style: TextStyle(
                 color: isDark ? Colors.white : Colors.black87,
                 fontWeight: FontWeight.w700,
@@ -274,9 +262,9 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.filter_list_rounded,
-                  color: const Color(0xFFF9A825),
+                  color: Color(0xFFF9A825),
                   size: 28,
                 ),
                 const SizedBox(height: 12),

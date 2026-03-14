@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
+import 'package:spotit/features/chat/presentation/pages/chat_screen.dart';
 import 'package:spotit/main.dart';
 
 class Comment {
@@ -15,6 +16,7 @@ class Comment {
   final String text;
   final DateTime timestamp;
   final String? parentCommentId;
+  final bool isOfficial;
   final List<Comment> replies;
 
   Comment({
@@ -24,8 +26,22 @@ class Comment {
     required this.text,
     required this.timestamp,
     this.parentCommentId,
+    this.isOfficial = false,
     List<Comment>? replies,
   }) : replies = replies ?? [];
+}
+
+class ComplaintDetailResult {
+  final bool isDeleted;
+  final Complaint? updatedComplaint;
+
+  const ComplaintDetailResult._(
+      {this.isDeleted = false, this.updatedComplaint});
+
+  static const deleted = ComplaintDetailResult._(isDeleted: true);
+
+  factory ComplaintDetailResult.updated(Complaint complaint) =>
+      ComplaintDetailResult._(updatedComplaint: complaint);
 }
 
 class ComplaintDetailPage extends StatefulWidget {
@@ -56,6 +72,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   bool _isLoadingComments = true;
   bool _isOfficial = false;
   late ComplaintRepository _repository;
+  bool _isLaunchingChat = false;
+  bool _isTogglingUpvote = false;
 
   @override
   void initState() {
@@ -100,6 +118,63 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
   }
 
+  Future<void> _openChatWithCitizen() async {
+    if (_isLaunchingChat) return;
+    if (_complaint.authorId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Citizen account unavailable for chat')),
+        );
+      }
+      return;
+    }
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    setState(() => _isLaunchingChat = true);
+
+    try {
+      final chatRepo = ChatRepositoryProvider.of(context);
+
+      final officialDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      final officialName = officialDoc.data()?['name'] as String? ??
+          currentUser.displayName ??
+          'Official';
+
+      final session = await chatRepo.getOrCreateChat(
+        officialId: currentUser.uid,
+        citizenId: _complaint.authorId,
+        complaintId: _complaint.id,
+        officialName: officialName,
+        citizenName: _complaint.authorName,
+      );
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            chatId: session.id,
+            otherUserName: _complaint.authorName,
+            isOfficial: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to start chat: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLaunchingChat = false);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -123,6 +198,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 text: data['text'] as String,
                 timestamp: data['timestamp'] as DateTime,
                 parentCommentId: data['parentCommentId'] as String?,
+                isOfficial: data['isOfficial'] as bool? ?? false,
               ))
           .toList();
 
@@ -159,8 +235,32 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     super.dispose();
   }
 
-  void _toggleUpvote() {
+  /// Pull-to-refresh: reloads comments and complaint data.
+  Future<void> _refreshDetail() async {
+    // Reload comments
+    setState(() => _isLoadingComments = true);
+    await _loadComments();
+    // Also refresh the complaint data (upvote count, status, etc.)
+    try {
+      final updated = await _repository.getComplaintById(_complaint.id);
+      if (updated != null && mounted) {
+        setState(() {
+          _complaint = updated.copyWith(isUpvoted: _hasUpvoted);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error refreshing complaint: $e');
+    }
+  }
+
+  Future<void> _toggleUpvote() async {
+    if (_isTogglingUpvote) return;
+
+    final previousHasUpvoted = _hasUpvoted;
+    final previousComplaint = _complaint;
+
     setState(() {
+      _isTogglingUpvote = true;
       _hasUpvoted = !_hasUpvoted;
       _complaint = _complaint.copyWith(
         upvoteCount: _complaint.upvoteCount + (_hasUpvoted ? 1 : -1),
@@ -169,10 +269,28 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     });
     _upvoteBounceController.forward(from: 0);
 
-    // Persist upvote toggle to Firebase (handles both add/remove)
-    _repository.toggleUpvote(_complaint.id).then((_) {}).catchError((e) {
+    try {
+      final updated = await _repository.toggleUpvote(_complaint.id);
+      if (!mounted) return;
+      setState(() {
+        _complaint = updated;
+        _hasUpvoted = updated.isUpvoted;
+      });
+    } catch (e) {
       debugPrint('Error toggling upvote: $e');
-    });
+      if (!mounted) return;
+      setState(() {
+        _hasUpvoted = previousHasUpvoted;
+        _complaint = previousComplaint;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update upvote. Please retry.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isTogglingUpvote = false);
+      }
+    }
   }
 
   bool get _isAuthor {
@@ -240,16 +358,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComplaint(_complaint.id);
       if (!mounted) return;
-      Navigator.pop(context, 'deleted');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Complaint deleted successfully'),
-          backgroundColor: const Color(0xFFF9A825),
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      Navigator.pop(context, ComplaintDetailResult.deleted);
     } catch (e) {
       debugPrint('Error deleting complaint: $e');
       if (mounted) {
@@ -270,8 +379,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
-    final author = user?.displayName ?? user?.email ?? 'You';
-    final authorId = user?.uid ?? '';
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to comment.')),
+      );
+      return;
+    }
+    final author = user.displayName ?? user.email ?? 'You';
+    final authorId = user.uid;
     final parentId = _replyingTo?.id;
 
     _commentController.clear();
@@ -287,6 +402,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       text,
       authorId: authorId,
       parentCommentId: parentId,
+      isOfficial: _isOfficial,
     )
         .then((newCount) {
       setState(() {
@@ -304,6 +420,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       });
     }).catchError((e) {
       debugPrint('Error adding comment: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to post comment. Please retry.')),
+      );
     });
   }
 
@@ -435,21 +555,17 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComment(_complaint.id, comment.id);
       if (!mounted) return;
-      // Reload comments and update count
-      final updatedComplaints =
-          await _repository.getComplaintById(_complaint.id);
-      if (updatedComplaints != null && mounted) {
-        setState(() {
-          _complaint = _complaint.copyWith(
-            commentCount: updatedComplaints.commentCount,
-          );
-        });
-      }
+      // Reload comments to get fresh list
       await _loadComments();
+      // Update comment count from the actual loaded comments
       if (mounted) {
+        final totalComments = _countAllComments(_comments);
+        setState(() {
+          _complaint = _complaint.copyWith(commentCount: totalComments);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Comment deleted'),
+            content: const Text('Comment deleted successfully'),
             backgroundColor: const Color(0xFFF9A825),
             behavior: SnackBarBehavior.floating,
             shape:
@@ -471,6 +587,15 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         );
       }
     }
+  }
+
+  /// Recursively count all comments including nested replies.
+  int _countAllComments(List<Comment> comments) {
+    int count = 0;
+    for (final c in comments) {
+      count += 1 + _countAllComments(c.replies);
+    }
+    return count;
   }
 
   void _showReportDialog() {
@@ -610,9 +735,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     final inputBg = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
 
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+        Navigator.pop(context, ComplaintDetailResult.updated(_complaint));
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -624,7 +750,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               size: 20,
               color: isDark ? Colors.white : Colors.black87,
             ),
-            onPressed: () => Navigator.pop(context, _complaint),
+            onPressed: () => Navigator.pop(context, ComplaintDetailResult.updated(_complaint)),
           ),
           title: Text(
             'Complaint Details',
@@ -650,234 +776,264 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
+        floatingActionButton: _isOfficial
+            ? FloatingActionButton.extended(
+                onPressed: _openChatWithCitizen,
+                backgroundColor: const Color(0xFF2EAA5E),
+                icon: const Icon(Icons.chat_rounded, color: Colors.white),
+                label: const Text(
+                  'Contact Citizen',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              )
+            : null,
         body: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Image(s) — carousel if multiple, single if one
-                    _buildImageSection(inputBg),
+              child: RefreshIndicator(
+                onRefresh: _refreshDetail,
+                color: const Color(0xFFF9A825),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                displacement: 40,
+                strokeWidth: 2.5,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image(s) — carousel if multiple, single if one
+                      _buildImageSection(inputBg),
 
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Title and Badges container
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Title
-                                    Text(
-                                      _complaint.title,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Title and Badges container
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Title
+                                      Text(
+                                        _complaint.title,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    if (_complaint.authorName.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor:
-                                                const Color(0xFFF9A825)
-                                                    .withValues(alpha: 0.2),
-                                            child: Text(
-                                              _complaint.authorName[0]
-                                                  .toUpperCase(),
-                                              style: const TextStyle(
-                                                color: Color(0xFFF9A825),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 11,
+                                      if (_complaint.authorName.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 12,
+                                              backgroundColor:
+                                                  const Color(0xFFF9A825)
+                                                      .withValues(alpha: 0.2),
+                                              child: Text(
+                                                _complaint.authorName[0]
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFFF9A825),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 11,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            _complaint.authorName,
-                                            style: TextStyle(
-                                              color: metaColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              _complaint.authorName,
+                                              style: TextStyle(
+                                                color: metaColor,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
+                                          ],
+                                        ),
+                                      ],
+                                      const SizedBox(height: 12),
+
+                                      // Badges
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        children: [
+                                          _buildBadge(
+                                            _complaint.category,
+                                            _getCategoryColor(
+                                                _complaint.category),
                                           ),
+                                          _buildBadge(
+                                            _complaint.status,
+                                            _getStatusColor(_complaint.status),
+                                          ),
+                                          if (_complaint.distanceInMeters !=
+                                                  null &&
+                                              _complaint.distanceInMeters !=
+                                                  double.maxFinite)
+                                            _buildBadge(
+                                              _formatDistance(
+                                                  _complaint.distanceInMeters!),
+                                              const Color(0xFF607D8B),
+                                            ),
                                         ],
                                       ),
                                     ],
-                                    const SizedBox(height: 12),
-
-                                    // Badges
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: [
-                                        _buildBadge(
-                                          _complaint.category,
-                                          _getCategoryColor(
-                                              _complaint.category),
-                                        ),
-                                        _buildBadge(
-                                          _complaint.status,
-                                          _getStatusColor(_complaint.status),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
+                                const SizedBox(width: 16),
 
-                              // Vertical Upvote Pill
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _toggleUpvote,
-                                    behavior: HitTestBehavior.opaque,
-                                    child: ScaleTransition(
-                                      scale: _upvoteBounceAnimation,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _hasUpvoted
-                                              ? const Color(0xFFF9A825)
-                                                  .withValues(alpha: 0.15)
-                                              : isDark
-                                                  ? const Color(0xFF1C2733)
-                                                  : const Color(0xFFE8EDF2),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
+                                // Vertical Upvote Pill
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _isOfficial ? null : _toggleUpvote,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: ScaleTransition(
+                                        scale: _upvoteBounceAnimation,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color: _hasUpvoted
                                                 ? const Color(0xFFF9A825)
-                                                    .withValues(alpha: 0.4)
+                                                    .withValues(alpha: 0.15)
                                                 : isDark
-                                                    ? Colors.white
-                                                        .withValues(alpha: 0.08)
-                                                    : Colors.black.withValues(
-                                                        alpha: 0.08),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.arrow_upward_rounded,
+                                                    ? const Color(0xFF1C2733)
+                                                    : const Color(0xFFE8EDF2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
                                               color: _hasUpvoted
                                                   ? const Color(0xFFF9A825)
+                                                      .withValues(alpha: 0.4)
                                                   : isDark
                                                       ? Colors.white.withValues(
-                                                          alpha: 0.7)
-                                                      : Colors.black54,
-                                              size: 24,
+                                                          alpha: 0.08)
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.08),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${_complaint.upvoteCount}',
-                                              style: TextStyle(
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.arrow_upward_rounded,
                                                 color: _hasUpvoted
                                                     ? const Color(0xFFF9A825)
                                                     : isDark
                                                         ? Colors.white
                                                             .withValues(
-                                                                alpha: 0.8)
-                                                        : Colors.black87,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
+                                                                alpha: 0.7)
+                                                        : Colors.black54,
+                                                size: 24,
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${_complaint.upvoteCount}',
+                                                style: TextStyle(
+                                                  color: _hasUpvoted
+                                                      ? const Color(0xFFF9A825)
+                                                      : isDark
+                                                          ? Colors.white
+                                                              .withValues(
+                                                                  alpha: 0.8)
+                                                          : Colors.black87,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
 
-                          // Official-only location section
-                          if (_isOfficial)
+                            // Location section (visible when coordinates exist)
                             _buildOfficialLocationSection(isDark, textColor),
 
-                          // Comments section header
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                color: textColor,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Comments (${_comments.length})',
-                                style: TextStyle(
+                            // Comments section header
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline_rounded,
                                   color: textColor,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
+                                  size: 20,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Comments list
-                          if (_isLoadingComments)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFFF9A825),
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
-                          else if (_comments.isEmpty)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'No comments yet. Be the first to comment!',
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Comments (${_complaint.commentCount})',
                                   style: TextStyle(
-                                    color: metaColor,
-                                    fontSize: 14,
+                                    color: textColor,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                            )
-                          else
-                            ..._buildCommentThread(
-                              _comments,
-                              isDark,
-                              textColor,
-                              0,
+                              ],
                             ),
-                        ],
+                            const SizedBox(height: 12),
+
+                            // Comments list
+                            if (_isLoadingComments)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFF9A825),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            else if (_comments.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'No comments yet. Be the first to comment!',
+                                    style: TextStyle(
+                                      color: metaColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._buildCommentThread(
+                                _comments,
+                                isDark,
+                                textColor,
+                                0,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1083,7 +1239,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
 
     final target = LatLng(lat, lng);
     const accent = Color(0xFFF9A825);
-    final cardBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
     final border = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
 
     return Column(
@@ -1102,7 +1257,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
             const SizedBox(width: 10),
             Text(
-              'Official: Complaint Location',
+              'Complaint Location',
               style: TextStyle(
                 color: textColor,
                 fontSize: 16,
@@ -1168,15 +1323,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Icon(Icons.location_on_rounded, color: accent, size: 16),
+                const Icon(Icons.location_on_rounded, color: accent, size: 16),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     _complaint.locationName,
                     style: TextStyle(
-                      color: isDark
-                          ? Colors.white.withAlpha(180)
-                          : Colors.black54,
+                      color:
+                          isDark ? Colors.white.withAlpha(180) : Colors.black54,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1325,6 +1479,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     final isOwn = currentUid.isNotEmpty && currentUid == comment.authorId;
     // Max indentation depth of 4 levels
     final leftPad = (depth.clamp(0, 4)) * 24.0;
+    final isOfficialComment = comment.isOfficial;
+    // Official comment accent: a muted teal-green that works on both themes
+    const officialAccent = Color(0xFF2E7D32);
 
     return GestureDetector(
       onLongPress: isOwn ? () => _confirmDeleteComment(comment) : null,
@@ -1332,16 +1489,23 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         margin: EdgeInsets.only(bottom: 8, left: leftPad),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
+          color: isOfficialComment
+              ? (isDark ? const Color(0xFF1B3A1B) : const Color(0xFFE8F5E9))
+              : (isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5)),
           borderRadius: BorderRadius.circular(12),
-          border: depth > 0
-              ? Border(
-                  left: BorderSide(
-                    color: const Color(0xFFF9A825).withValues(alpha: 0.4),
-                    width: 2,
-                  ),
+          border: isOfficialComment
+              ? Border.all(
+                  color: officialAccent.withValues(alpha: 0.4),
+                  width: 1.5,
                 )
-              : null,
+              : depth > 0
+                  ? Border(
+                      left: BorderSide(
+                        color: const Color(0xFFF9A825).withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                    )
+                  : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1350,14 +1514,17 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor:
-                      const Color(0xFFF9A825).withValues(alpha: 0.2),
+                  backgroundColor: isOfficialComment
+                      ? officialAccent.withValues(alpha: 0.2)
+                      : const Color(0xFFF9A825).withValues(alpha: 0.2),
                   child: Text(
                     comment.author.isNotEmpty
                         ? comment.author[0].toUpperCase()
                         : '?',
-                    style: const TextStyle(
-                      color: Color(0xFFF9A825),
+                    style: TextStyle(
+                      color: isOfficialComment
+                          ? officialAccent
+                          : const Color(0xFFF9A825),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1365,14 +1532,43 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    comment.author,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          comment.author,
+                          style: TextStyle(
+                            color:
+                                isOfficialComment ? officialAccent : textColor,
+                            fontWeight: isOfficialComment
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isOfficialComment) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: officialAccent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Official',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Text(
@@ -1390,10 +1586,16 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             Text(
               comment.text,
               style: TextStyle(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.75)
-                    : Colors.black54,
+                color: isOfficialComment
+                    ? (isDark
+                        ? const Color(0xFFA5D6A7)
+                        : const Color(0xFF1B5E20))
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.75)
+                        : Colors.black54),
                 fontSize: 13,
+                fontWeight:
+                    isOfficialComment ? FontWeight.w700 : FontWeight.normal,
                 height: 1.4,
               ),
             ),
@@ -1496,6 +1698,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         ),
       ),
     );
+  }
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m away';
+    }
+    final km = meters / 1000;
+    return '${km.toStringAsFixed(1)} km away';
   }
 
   Color _getCategoryColor(String category) {

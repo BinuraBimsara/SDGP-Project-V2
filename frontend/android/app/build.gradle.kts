@@ -16,7 +16,10 @@ val localProps = Properties()
 if (localPropsFile.exists()) {
     localPropsFile.reader().use { localProps.load(it) }
 }
-val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
+val mapsApiKey: String =
+    (project.findProperty("MAPS_API_KEY") as String?)
+        ?: System.getenv("MAPS_API_KEY")
+        ?: localProps.getProperty("MAPS_API_KEY", "")
 
 android {
     namespace = "com.example.spotit"
@@ -47,8 +50,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Development stage: keep release installable without production keystore.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
