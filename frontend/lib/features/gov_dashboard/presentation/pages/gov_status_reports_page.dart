@@ -41,10 +41,14 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'All', 'icon': Icons.all_inclusive, 'color': Color(0xFFF9A825)},
-    {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
+    {
+      'label': 'Road Damage',
+      'value': 'Road',
+      'icon': Icons.remove_road,
+      'color': Color(0xFFE91E63),
+    },
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
-    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -134,9 +138,9 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.filter_list_rounded,
-                  color: const Color(0xFFF9A825),
+                  color: Color(0xFFF9A825),
                   size: 28,
                 ),
                 const SizedBox(height: 12),
@@ -245,9 +249,9 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.category_rounded,
-                  color: const Color(0xFFF9A825),
+                  color: Color(0xFFF9A825),
                   size: 28,
                 ),
                 const SizedBox(height: 12),
@@ -270,15 +274,16 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                 const SizedBox(height: 20),
                 ..._categories.map((cat) {
                   final label = cat['label'] as String;
+                  final value = (cat['value'] as String?) ?? label;
                   final icon = cat['icon'] as IconData;
                   final color = cat['color'] as Color;
-                  final isSelected = _selectedCategory == label;
+                  final isSelected = _selectedCategory == value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: GestureDetector(
                       onTap: () {
                         setState(() {
-                          _selectedCategory = label;
+                          _selectedCategory = value;
                           _applyFilters();
                         });
                         Navigator.pop(ctx);
