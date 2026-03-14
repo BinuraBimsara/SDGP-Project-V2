@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
@@ -67,6 +68,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Load persisted theme before rendering the app.
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('themeMode');
+  if (savedTheme == 'dark') {
+    SpotItApp.themeNotifier.value = ThemeMode.dark;
+  }
 
   if (kIsWeb) {
     const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
