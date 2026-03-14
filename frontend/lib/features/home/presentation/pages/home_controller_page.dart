@@ -102,6 +102,19 @@ class _HomeControllerPageState extends State<HomeControllerPage>
   /// Called when a complaint is deleted from My Reports detail view.
   void _handleComplaintDeletedFromReports() {
     _switchTab(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Complaint deleted successfully'),
+          backgroundColor: const Color(0xFFF9A825),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    });
   }
 
   Widget _currentPage() {
