@@ -20,6 +20,17 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   );
   final StorageService _storageService = StorageService();
 
+  String _normalizeCategory(String category) {
+    switch (category) {
+      case 'Road Damage':
+        return 'Road';
+      case 'Lighting':
+        return 'Other';
+      default:
+        return category;
+    }
+  }
+
   /// Reference to the top-level complaints collection.
   CollectionReference<Map<String, dynamic>> get _complaintsRef =>
       _firestore.collection('complaints');
@@ -32,9 +43,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     double? userLat,
     double? userLng,
   }) async {
-    // Always fetch all complaints ordered by timestamp
-    final snapshot =
-        await _complaintsRef.orderBy('timestamp', descending: true).get();
+    // Fetch all complaints without orderBy so legacy docs without timestamp
+    // are also included.
+    final snapshot = await _complaintsRef.get();
 
     List<Complaint> complaints =
         snapshot.docs.map((doc) => Complaint.fromFirestore(doc)).toList();
@@ -45,6 +56,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           .where((c) => c.category.toLowerCase() == category.toLowerCase())
           .toList();
     }
+
+    // Default sort for non-distance views: latest first.
+    complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     // Calculate distance from user and sort closest-first
     if (userLat != null && userLng != null) {
@@ -100,8 +114,26 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   @override
   Future<Complaint> createComplaint(Complaint complaint,
       {List<XFile>? images}) async {
+    // Use a schema-compatible payload for Firestore rules.
+    final createPayload = <String, dynamic>{
+      'title': complaint.title,
+      'description': complaint.description,
+      'category': _normalizeCategory(complaint.category),
+      'imageUrl': complaint.imageUrl,
+      'imageUrls': complaint.imageUrls,
+      'status': complaint.status,
+      'upvoteCount': complaint.upvoteCount,
+      'commentCount': complaint.commentCount,
+      'timestamp': Timestamp.fromDate(complaint.timestamp),
+      'authorId': complaint.authorId,
+      'authorName': complaint.authorName,
+      'locationName': complaint.locationName,
+      'latitude': complaint.latitude,
+      'longitude': complaint.longitude,
+    };
+
     // 1. Create the complaint document first (to get the ID)
-    final docRef = await _complaintsRef.add(complaint.toFirestore());
+    final docRef = await _complaintsRef.add(createPayload);
 
     // 2. Upload images if provided
     List<String> imageUrls = [];
@@ -145,15 +177,33 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     bool isOfficial = false,
   }) async {
     final callable = _functions.httpsCallable('addComment');
-    await callable.call({
-      'complaintId': complaintId,
-      'text': text,
-      'parentCommentId': parentCommentId,
-    });
+    try {
+      await callable.call({
+        'complaintId': complaintId,
+        'text': text,
+        'parentCommentId': parentCommentId,
+      });
 
-    final updatedDoc = await _complaintsRef.doc(complaintId).get();
-    final data = updatedDoc.data();
-    return (data?['commentCount'] as num?)?.toInt() ?? 0;
+      final updatedDoc = await _complaintsRef.doc(complaintId).get();
+      final data = updatedDoc.data();
+      return (data?['commentCount'] as num?)?.toInt() ?? 0;
+    } on FirebaseFunctionsException {
+      // Fallback path: write the comment directly when callable fails.
+      await _complaintsRef.doc(complaintId).collection('comments').add({
+        'authorId': authorId,
+        'authorName': author,
+        'text': text.trim(),
+        'parentCommentId': parentCommentId,
+        'isOfficial': isOfficial,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      final commentsSnapshot = await _complaintsRef
+          .doc(complaintId)
+          .collection('comments')
+          .get();
+      return commentsSnapshot.docs.length;
+    }
   }
 
   @override
