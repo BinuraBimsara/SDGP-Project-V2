@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -130,7 +130,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to start chat')),
+        );
+      }
+      return;
+    }
 
     setState(() => _isLaunchingChat = true);
 
@@ -803,7 +810,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Image(s) — carousel if multiple, single if one
+                      // Image(s) ΓÇö carousel if multiple, single if one
                       _buildImageSection(inputBg),
 
                       Padding(
@@ -1170,7 +1177,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Single image — dynamic aspect ratio
+    // Single image ΓÇö dynamic aspect ratio
     if (urls.length == 1) {
       return _DetailDynamicImage(
         imageUrl: urls.first,
@@ -1179,7 +1186,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       );
     }
 
-    // Multiple images — square carousel with indicators
+    // Multiple images ΓÇö square carousel with indicators
     return AspectRatio(
       aspectRatio: 1.0, // square for carousel consistency
       child: Stack(
@@ -1229,12 +1236,12 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     );
   }
 
-  // ── Official-only location section with map + navigation ──
+  // ΓöÇΓöÇ Official-only location section with map + navigation ΓöÇΓöÇ
   Widget _buildOfficialLocationSection(bool isDark, Color textColor) {
     final lat = _complaint.latitude;
     final lng = _complaint.longitude;
 
-    // No coordinates → don't show anything
+    // No coordinates ΓåÆ don't show anything
     if (lat == null || lng == null) return const SizedBox.shrink();
 
     final target = LatLng(lat, lng);
@@ -1405,7 +1412,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
   }
 
-  // ── Map styles (same as LocationPickerScreen) ──
+  // ΓöÇΓöÇ Map styles (same as LocationPickerScreen) ΓöÇΓöÇ
   static const String _darkMapStyle = '''
 [
   {"elementType":"geometry","stylers":[{"color":"#0d0d0d"}]},
@@ -1737,11 +1744,11 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Instagram-style dynamic aspect ratio image for the detail page.
 // Same approach as the home feed: resolve decoded dimensions, clamp to
-// 4:5 (portrait) ↔ 1.91:1 (landscape).
-// ─────────────────────────────────────────────────────────────────────────────
+// 4:5 (portrait) Γåö 1.91:1 (landscape).
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 class _DetailDynamicImage extends StatefulWidget {
   final String imageUrl;
   final bool isDark;
@@ -1856,3 +1863,4 @@ class _DetailDynamicImageState extends State<_DetailDynamicImage> {
     );
   }
 }
+
