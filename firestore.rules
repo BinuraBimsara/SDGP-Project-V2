@@ -150,6 +150,14 @@ service cloud.firestore {
           // Testing mode: allow status-only updates without auth flow.
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
           isValidStatus(request.resource.data.status)
+        )
+        ||
+        (
+          // Allow signed-in users to update commentCount (for comment add/delete sync).
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['commentCount']) &&
+          request.resource.data.commentCount is int &&
+          request.resource.data.commentCount >= 0
         );
 
       // Government or complaint owner can delete.
