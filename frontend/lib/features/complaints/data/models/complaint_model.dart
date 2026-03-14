@@ -50,6 +50,15 @@ class Complaint {
   /// Create a Complaint from a Firestore document snapshot.
   factory Complaint.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final GeoPoint? geoPoint = data['location'] is GeoPoint
+      ? data['location'] as GeoPoint
+      : null;
+    final double? parsedLatitude = (data['latitude'] as num?)?.toDouble() ??
+      (data['lat'] as num?)?.toDouble() ??
+      geoPoint?.latitude;
+    final double? parsedLongitude = (data['longitude'] as num?)?.toDouble() ??
+      (data['lng'] as num?)?.toDouble() ??
+      geoPoint?.longitude;
 
     // Handle imageUrls: support both single imageUrl and list of imageUrls
     final List<String> urls = [];
@@ -93,8 +102,8 @@ class Complaint {
       authorId: data['authorId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? '',
       locationName: data['locationName'] as String? ?? '',
-      latitude: (data['latitude'] as num?)?.toDouble(),
-      longitude: (data['longitude'] as num?)?.toDouble(),
+      latitude: parsedLatitude,
+      longitude: parsedLongitude,
       isUpvoted: hasUpvoted,
       upvotedBy: voters,
     );
@@ -117,7 +126,6 @@ class Complaint {
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
-      'upvotedBy': upvotedBy,
     };
   }
 
