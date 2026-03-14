@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SpotIT Cloud Functions
  *
  * Firebase Cloud Functions for the SpotIT civic-reporting platform.
@@ -7,7 +7,7 @@
 
 const {setGlobalOptions} = require("firebase-functions/v2/options");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
-const {beforeUserCreated} = require("firebase-functions/v2/identity");
+const {user: authUser} = require("firebase-functions/v1/auth");
 const {onDocumentCreated, onDocumentUpdated} =
   require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
@@ -167,44 +167,6 @@ async function sendNotification(uid, title, body, extra = {}) {
   }
 }
 
-/**
- * Queue upvote notifications and emit one alert for each group of 5 new upvotes.
- * @param {string} authorId
- * @param {string} complaintId
- * @param {string} complaintTitle
- */
-async function handleUpvoteNotification(authorId, complaintId, complaintTitle) {
-  const stateRef = db.collection("users").doc(authorId)
-      .collection("notificationState").doc(`upvotes_${complaintId}`);
-
-  const stateSnap = await stateRef.get();
-  const pending = stateSnap.exists ?
-    (stateSnap.data().pendingUpvotes || 0) : 0;
-
-  const nextPending = pending + 1;
-
-  if (nextPending >= 5) {
-    const remainder = nextPending - 5;
-    await sendNotification(
-        authorId,
-        "Report Upvoted",
-        "Your report receives 5 new upvotes",
-        {complaintId, complaintTitle, type: "upvote"},
-    );
-
-    await stateRef.set({
-      pendingUpvotes: remainder,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, {merge: true});
-    return;
-  }
-
-  await stateRef.set({
-    pendingUpvotes: nextPending,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, {merge: true});
-}
-
 // -- Health-check endpoint ---------------------------------------------------
 // GET /healthCheck -> verifies the functions runtime is alive
 exports.healthCheck = onRequest((req, res) => {
@@ -219,14 +181,13 @@ exports.healthCheck = onRequest((req, res) => {
 // -- Auto-create user profile on sign-up -------------------------------------
 // Triggered when a new user is created via Firebase Auth (e.g. Google Sign-In).
 // Creates a profile document at users/{uid} with default citizen role.
-exports.onUserCreated = beforeUserCreated((event) => {
-  const user = event.data;
-  const uid = user.uid;
+exports.onUserCreated = authUser().onCreate((userRecord) => {
+  const uid = userRecord.uid;
 
   const profile = {
-    displayName: user.displayName || "",
-    email: user.email || "",
-    photoURL: user.photoURL || "",
+    displayName: userRecord.displayName || "",
+    email: userRecord.email || "",
+    photoURL: userRecord.photoURL || "",
     role: "citizen",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
@@ -234,12 +195,9 @@ exports.onUserCreated = beforeUserCreated((event) => {
   logger.info(`Creating profile for new user: ${uid}`, {uid, profile});
 
   // Write to Firestore (fire-and-forget; blocking auth is not needed)
-  db.collection("users").doc(uid).set(profile).catch((err) => {
+  return db.collection("users").doc(uid).set(profile).catch((err) => {
     logger.error(`Failed to create profile for ${uid}`, err);
   });
-
-  // Return empty object -- we are not modifying the user record
-  return {};
 });
 
 // -- Complaint creation validation -------------------------------------------
@@ -337,7 +295,7 @@ exports.onComplaintUpdated = onDocumentUpdated(
 // -- Toggle upvote (callable) ------------------------------------------------
 // Atomically toggles a user's upvote on a complaint.
 // Maintains a subcollection complaints/{id}/upvotes/{uid}.
-exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
+exports.toggleUpvote = onCall(async (request) => {
   // Require authentication
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "You must be signed in to upvote.");
@@ -360,11 +318,6 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       throw new HttpsError("not-found", "Complaint not found.");
     }
 
-    const complaintData = complaintSnap.data() || {};
-    const currentUpvotes = Number(complaintData.upvoteCount || 0);
-    const authorId = complaintData.authorId || "";
-    const complaintTitle = complaintData.title || "your report";
-
     const upvoteSnap = await tx.get(upvoteRef);
 
     if (upvoteSnap.exists) {
@@ -372,13 +325,9 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       tx.delete(upvoteRef);
       tx.update(complaintRef, {
         upvoteCount: admin.firestore.FieldValue.increment(-1),
+        upvotedBy: admin.firestore.FieldValue.arrayRemove(uid),
       });
-      return {
-        upvoted: false,
-        authorId,
-        complaintTitle,
-        nextUpvoteCount: Math.max(0, currentUpvotes - 1),
-      };
+      return {upvoted: false};
     } else {
       // Add upvote
       tx.set(upvoteRef, {
@@ -387,23 +336,11 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
       });
       tx.update(complaintRef, {
         upvoteCount: admin.firestore.FieldValue.increment(1),
+        upvotedBy: admin.firestore.FieldValue.arrayUnion(uid),
       });
-      return {
-        upvoted: true,
-        authorId,
-        complaintTitle,
-        nextUpvoteCount: currentUpvotes + 1,
-      };
+      return {upvoted: true};
     }
   });
-
-  if (result.upvoted && result.authorId && result.authorId !== uid) {
-    await handleUpvoteNotification(
-        result.authorId,
-        complaintId,
-        result.complaintTitle || "your report",
-    );
-  }
 
   logger.info(
       `User ${uid} ` +
@@ -415,7 +352,7 @@ exports.toggleUpvote = onCall({enforceAppCheck: true}, async (request) => {
 
 // -- Add comment (callable) --------------------------------------------------
 // Creates a comment document and increments commentCount atomically.
-exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
+exports.addComment = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "You must be signed in to comment.");
   }
@@ -450,7 +387,6 @@ exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
   if (!complaintSnap.exists) {
     throw new HttpsError("not-found", "Complaint not found.");
   }
-  const complaintData = complaintSnap.data() || {};
 
   // Fetch author display name from user profile
   const userSnap = await db
@@ -482,25 +418,6 @@ exports.addComment = onCall({enforceAppCheck: true}, async (request) => {
       `Comment ${commentDoc.id} added to ` +
     `complaint ${complaintId} by ${uid}`,
   );
-
-  const complaintAuthorId = complaintData.authorId || "";
-  const complaintTitle = complaintData.title || "your report";
-  if (complaintAuthorId && complaintAuthorId !== uid) {
-    const commentActor = isOfficial ?
-      "A government official" :
-      "A user";
-    await sendNotification(
-        complaintAuthorId,
-        "New Comment",
-        `${commentActor} commented on \"${complaintTitle}\"`,
-        {
-          complaintId,
-          commentId: commentDoc.id,
-          type: "comment",
-          isOfficialComment: isOfficial,
-        },
-    );
-  }
 
   return {
     commentId: commentDoc.id,
@@ -539,6 +456,7 @@ exports.createReport = onCall(async (request) => {
     authorId: payload.authorId,
     imageUrl: payload.imageUrl || "",
     locationName: payload.locationName || "",
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
@@ -668,41 +586,4 @@ exports.setUserRole = onCall(async (request) => {
   };
 });
 
-// -- Mark all notifications read (callable) ---------------------------------
-// Marks all unread notifications for the current user as read.
-exports.markAllNotificationsRead = onCall(
-    {enforceAppCheck: true},
-    async (request) => {
-      if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Authentication required.");
-      }
-
-      const uid = request.auth.uid;
-      const limitRaw = Number(request.data?.limit || 500);
-      const limit = Number.isFinite(limitRaw) ?
-        Math.max(1, Math.min(1000, Math.trunc(limitRaw))) :
-        500;
-
-      const unreadSnap = await db.collection("users").doc(uid)
-          .collection("notifications")
-          .where("read", "==", false)
-          .limit(limit)
-          .get();
-
-      if (unreadSnap.empty) {
-        return {updatedCount: 0};
-      }
-
-      const batch = db.batch();
-      unreadSnap.docs.forEach((doc) => {
-        batch.update(doc.ref, {
-          read: true,
-          readAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-      await batch.commit();
-
-      return {updatedCount: unreadSnap.size};
-    },
-);
 

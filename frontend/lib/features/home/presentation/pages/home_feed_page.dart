@@ -582,13 +582,29 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
               _repository.toggleUpvote(_complaints[index].id);
             },
             onTap: () async {
-              final result = await Navigator.push(
+              final messenger = ScaffoldMessenger.of(context);
+              final result = await Navigator.push<ComplaintDetailResult>(
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
                       ComplaintDetailPage(complaint: _complaints[index]),
                 ),
               );
+              if (!mounted) return;
+              if (result == ComplaintDetailResult.deleted) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: const Text('Complaint deleted successfully'),
+                    backgroundColor: const Color(0xFFF9A825),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+                _loadComplaints();
+                return;
+              }
               if (result != null) {
                 // Reload complaints to get fresh data from Firebase
                 _loadComplaints();

@@ -64,6 +64,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
   bool _isOfficial = false;
   late ComplaintRepository _repository;
   bool _isLaunchingChat = false;
+  bool _isTogglingUpvote = false;
 
   @override
   void initState() {
@@ -243,8 +244,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
   }
 
-  void _toggleUpvote() {
+  Future<void> _toggleUpvote() async {
+    if (_isTogglingUpvote) return;
+
+    final previousHasUpvoted = _hasUpvoted;
+    final previousComplaint = _complaint;
+
     setState(() {
+      _isTogglingUpvote = true;
       _hasUpvoted = !_hasUpvoted;
       _complaint = _complaint.copyWith(
         upvoteCount: _complaint.upvoteCount + (_hasUpvoted ? 1 : -1),
@@ -253,10 +260,28 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     });
     _upvoteBounceController.forward(from: 0);
 
-    // Persist upvote toggle to Firebase (handles both add/remove)
-    _repository.toggleUpvote(_complaint.id).then((_) {}).catchError((e) {
+    try {
+      final updated = await _repository.toggleUpvote(_complaint.id);
+      if (!mounted) return;
+      setState(() {
+        _complaint = updated;
+        _hasUpvoted = updated.isUpvoted;
+      });
+    } catch (e) {
       debugPrint('Error toggling upvote: $e');
-    });
+      if (!mounted) return;
+      setState(() {
+        _hasUpvoted = previousHasUpvoted;
+        _complaint = previousComplaint;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update upvote. Please retry.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isTogglingUpvote = false);
+      }
+    }
   }
 
   bool get _isAuthor {
@@ -345,8 +370,14 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
-    final author = user?.displayName ?? user?.email ?? 'You';
-    final authorId = user?.uid ?? '';
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to comment.')),
+      );
+      return;
+    }
+    final author = user.displayName ?? user.email ?? 'You';
+    final authorId = user.uid;
     final parentId = _replyingTo?.id;
 
     _commentController.clear();
@@ -380,6 +411,10 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       });
     }).catchError((e) {
       debugPrint('Error adding comment: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to post comment. Please retry.')),
+      );
     });
   }
 
@@ -525,7 +560,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Comment deleted'),
+            content: const Text('Comment deleted successfully'),
             backgroundColor: const Color(0xFFF9A825),
             behavior: SnackBarBehavior.floating,
             shape:
@@ -916,9 +951,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                             ),
                             const SizedBox(height: 16),
 
-                            // Official-only location section
-                            if (_isOfficial)
-                              _buildOfficialLocationSection(isDark, textColor),
+                            // Location section (visible when coordinates exist)
+                            _buildOfficialLocationSection(isDark, textColor),
 
                             // Comments section header
                             Row(
@@ -1190,7 +1224,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
 
     final target = LatLng(lat, lng);
     const accent = Color(0xFFF9A825);
-    final cardBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
     final border = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
 
     return Column(
@@ -1209,7 +1242,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
             const SizedBox(width: 10),
             Text(
-              'Official: Complaint Location',
+              'Complaint Location',
               style: TextStyle(
                 color: textColor,
                 fontSize: 16,

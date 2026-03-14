@@ -16,7 +16,10 @@ val localProps = Properties()
 if (localPropsFile.exists()) {
     localPropsFile.reader().use { localProps.load(it) }
 }
-val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
+val mapsApiKey: String =
+    (project.findProperty("MAPS_API_KEY") as String?)
+        ?: System.getenv("MAPS_API_KEY")
+        ?: localProps.getProperty("MAPS_API_KEY", "")
 
 android {
     namespace = "com.example.spotit"

@@ -34,7 +34,14 @@ service cloud.firestore {
     }
 
     function isValidCategory(category) {
-      return category in ['Road', 'Infrastructure', 'Waste', 'Other'];
+      return category in [
+        'Road', 'Road Damage', 'Infrastructure', 'Waste', 'Lighting', 'Other'
+      ];
+    }
+
+    function isComplaintOwner(complaintId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/complaints/$(complaintId)).data.authorId == request.auth.uid;
     }
 
     function isValidString(value, min, max) {
@@ -92,8 +99,8 @@ service cloud.firestore {
 
     // ── Complaints collection ────────────────────────────────────────
     match /complaints/{complaintId} {
-      // Signed-in users can read complaints.
-      allow read: if isSignedIn();
+      // In testing, allow reading complaints without auth.
+      allow read: if true;
 
       // Complaint creation with strict schema and ownership checks.
       allow create: if isSignedIn() &&
@@ -114,8 +121,9 @@ service cloud.firestore {
         isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude);
 
       // Authors can only edit non-sensitive fields of their own complaint.
-      allow update: if isSignedIn() && (
+      allow update: if
         (
+          isSignedIn() &&
           isSelfUnchanged(request.auth.uid) &&
           request.resource.data.status == resource.data.status &&
           request.resource.data.upvoteCount == resource.data.upvoteCount &&
@@ -129,16 +137,23 @@ service cloud.firestore {
           isValidCategory(request.resource.data.category) &&
           isValidOptionalString(request.resource.data.locationName, 120) &&
           isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude)
-        ) ||
+        )
+        ||
         (
+          isSignedIn() &&
           isGovernment() &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
           isValidStatus(request.resource.data.status)
         )
-      );
+        ||
+        (
+          // Testing mode: allow status-only updates without auth flow.
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
+          isValidStatus(request.resource.data.status)
+        );
 
-      // Only government can delete
-      allow delete: if isGovernment();
+      // Government or complaint owner can delete.
+      allow delete: if isGovernment() || isComplaintOwner(complaintId);
 
       // Upvotes subcollection
       match /upvotes/{upvoteId} {
@@ -148,14 +163,24 @@ service cloud.firestore {
 
       // Comments subcollection
       match /comments/{commentId} {
-        allow read: if isSignedIn();
+        allow read: if true;
 
-        // Comment creation is server-only via callable Cloud Functions.
-        allow create: if false;
+        // Allow signed-in users to create their own comments with strict schema.
+        allow create: if isSignedIn() &&
+          request.resource.data.keys().hasOnly([
+            'authorId', 'authorName', 'text', 'parentCommentId', 'isOfficial', 'timestamp'
+          ]) &&
+          request.resource.data.authorId == request.auth.uid &&
+          isValidString(request.resource.data.authorName, 1, 120) &&
+          isValidString(request.resource.data.text, 1, 1000) &&
+          (request.resource.data.parentCommentId == null ||
+            request.resource.data.parentCommentId is string) &&
+          request.resource.data.isOfficial is bool;
 
         allow update, delete: if isSignedIn() && (
           resource.data.authorId == request.auth.uid ||
-          isGovernment()
+          isGovernment() ||
+          isComplaintOwner(complaintId)
         );
       }
     }
