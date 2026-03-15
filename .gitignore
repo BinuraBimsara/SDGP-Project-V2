@@ -23,6 +23,14 @@ frontend/macos/Flutter/ephemeral/
 frontend/windows/flutter/ephemeral/
 frontend/linux/flutter/ephemeral/
 frontend/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Backend Flutter/Dart (auto-generated files with local paths)
+backend/.flutter-plugins
+backend/.flutter-plugins-dependencies
+backend/.dart_tool/
+backend/.packages
+backend/android/.gradle/
+backend/android/local.properties
 # Miscellaneous
 *.log
 *.swp
