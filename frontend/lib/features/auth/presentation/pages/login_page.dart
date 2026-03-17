@@ -27,6 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  int _invalidGovEmailAttempts = 0;
 
   // ─── Colors ──────────────────────────────────────────────
   static const Color _amber = Color(0xFFF9A825);
@@ -87,6 +88,36 @@ class _LoginPageState extends State<LoginPage> {
   /// Official email/password sign-in → navigate to gov dashboard.
   /// DEV BYPASS: Skips auth validation and goes straight to gov dashboard.
   Future<void> _handleOfficialSignIn() async {
+    final email = _emailController.text.trim().toLowerCase();
+    if (email.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email is required'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!email.endsWith('.gov.lk')) {
+      final message = _invalidGovEmailAttempts == 0
+          ? 'Only government officials are allowed log in'
+          : 'Only emails that ends with .gov.lk are allowed log in';
+      _invalidGovEmailAttempts++;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    _invalidGovEmailAttempts = 0;
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -411,6 +442,14 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildOfficialInfoBanner(),
+        const SizedBox(height: 16),
+        _buildLabel('Government Email'),
+        const SizedBox(height: 8),
+        _buildEmailField(),
+        const SizedBox(height: 14),
+        _buildLabel('Password'),
+        const SizedBox(height: 8),
+        _buildPasswordField(),
         const SizedBox(height: 20),
         _buildSignInButton(),
         const SizedBox(height: 16),
@@ -462,6 +501,7 @@ class _LoginPageState extends State<LoginPage> {
       onTap: () {
         setState(() {
           _selectedRole = role;
+          _invalidGovEmailAttempts = 0;
           _emailController.clear();
           _passwordController.clear();
         });
