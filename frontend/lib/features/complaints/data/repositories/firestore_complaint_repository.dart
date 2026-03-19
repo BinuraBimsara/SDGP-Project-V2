@@ -22,8 +22,15 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   final StorageService _storageService = StorageService();
 
   String _normalizeCategory(String category) {
-    // Return category as-is to match filter values
-    return category;
+    final normalized = category.trim().toLowerCase();
+    if (normalized == 'road') return 'road damage';
+    return normalized;
+  }
+
+  bool _categoryMatches(String complaintCategory, String selectedCategory) {
+    final complaint = _normalizeCategory(complaintCategory);
+    final selected = _normalizeCategory(selectedCategory);
+    return complaint == selected;
   }
 
   /// Reference to the top-level complaints collection.
@@ -48,7 +55,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     // Apply category filter client-side to avoid needing a composite index
     if (category != null && category.isNotEmpty) {
       complaints = complaints
-          .where((c) => c.category.toLowerCase() == category.toLowerCase())
+          .where((c) => _categoryMatches(c.category, category))
           .toList();
     }
 
