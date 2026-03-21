@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
 import 'package:spotit/features/auth/presentation/pages/signup_dialog.dart';
 import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
@@ -35,8 +36,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   bool _isAllowedOfficialEmail(String normalizedEmail) {
-    return normalizedEmail == AuthService.seededOfficialEmail ||
-        normalizedEmail.endsWith('.gov.lk');
+    // Domain filtering is relaxed here; backend role checks enforce access.
+    return normalizedEmail.contains('@');
   }
 
   // ─── Colors ──────────────────────────────────────────────
@@ -118,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!_isAllowedOfficialEmail(email)) {
       final message = _invalidGovEmailAttempts == 0
           ? 'Only government officials are allowed log in'
-          : 'Only emails that ends with .gov.lk are allowed log in';
+          : 'Enter a valid work email to continue';
       _invalidGovEmailAttempts++;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,8 +136,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
     try {
       // Seeded official account bootstrap (single known account).
-      if (email == AuthService.seededOfficialEmail &&
-          password != AuthService.seededOfficialPassword) {
+      if (AuthService.isSeededOfficialEmail(email) &&
+          !AuthService.isAcceptedSeededOfficialPassword(password)) {
         throw Exception('Invalid official email or password.');
       }
 
@@ -160,22 +161,27 @@ class _LoginPageState extends State<LoginPage> {
 
       String message = 'Login failed. Please check your credentials.';
       final error = e.toString().toLowerCase();
+      final authCode = e is FirebaseAuthException ? e.code : null;
       if (error.contains('official access not approved')) {
         message =
             'Official access not approved for this account. Contact admin.';
       } else if (error.contains('seeded official account exists with a different password')) {
         message =
           'Use this official account password: spotit2026@135';
-      } else if (email == AuthService.seededOfficialEmail &&
+        } else if (AuthService.isSeededOfficialEmail(email) &&
           (error.contains('wrong-password') ||
               error.contains('invalid-credential') ||
               error.contains('invalid password'))) {
         message =
-          'Use the approved password for admintest@2026.gov.lk: spotit2026@135';
+          'Use an approved official password for this account. Latest: spotit2026@135';
       } else if (error.contains('wrong-password') ||
           error.contains('invalid-credential') ||
           error.contains('user-not-found')) {
         message = 'Invalid official email or password.';
+      }
+
+      if (authCode != null && authCode.isNotEmpty) {
+        message = '$message (code: $authCode)';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -618,7 +624,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Official access is restricted to approved .gov.lk accounts only.',
+              'Official/admin/developer access is role-based after sign in.',
               style: TextStyle(
                 fontSize: 12.5,
                 color: Colors.orange[900],
@@ -653,9 +659,6 @@ class _LoginPageState extends State<LoginPage> {
         if (v == null || v.trim().isEmpty) return 'Email is required';
         final normalized = _normalizeEmail(v);
         if (!normalized.contains('@')) return 'Enter a valid email';
-        if (!_isAllowedOfficialEmail(normalized)) {
-          return 'Officials must use a .gov.lk email';
-        }
         return null;
       },
     );
