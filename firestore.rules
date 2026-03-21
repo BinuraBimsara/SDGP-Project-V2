@@ -155,7 +155,7 @@ service cloud.firestore {
         (
           // Allow signed-in users to update commentCount (for comment add/delete sync).
           isSignedIn() &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['commentCount']) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']) &&
           request.resource.data.commentCount is int &&
           request.resource.data.commentCount >= 0
         );

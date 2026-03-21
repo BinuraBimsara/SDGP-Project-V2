@@ -178,14 +178,8 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   ];
 
   String _normalizeCategory(String category) {
-    switch (category) {
-      case 'Road Damage':
-        return 'Road';
-      case 'Lighting':
-        return 'Other';
-      default:
-        return category;
-    }
+    // Return category as-is to match filter values
+    return category;
   }
 
   @override
