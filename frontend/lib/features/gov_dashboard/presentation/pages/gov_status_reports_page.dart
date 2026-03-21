@@ -43,14 +43,10 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'All', 'icon': Icons.all_inclusive, 'color': Color(0xFFF9A825)},
-    {
-      'label': 'Road Damage',
-      'value': 'Road',
-      'icon': Icons.remove_road,
-      'color': Color(0xFFE91E63),
-    },
+    {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -84,10 +80,19 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
       _complaints = List.from(_allStatusComplaints);
     } else {
       _complaints = _allStatusComplaints
-          .where((c) => c.category == _selectedCategory)
+          .where((c) => _categoryMatches(c.category, _selectedCategory))
           .toList();
     }
     _sortComplaints();
+  }
+
+  bool _categoryMatches(String complaintCategory, String selectedCategory) {
+    final complaint = complaintCategory.trim().toLowerCase();
+    final selected = selectedCategory.trim().toLowerCase();
+    if (selected == 'road damage') {
+      return complaint == 'road damage' || complaint == 'road';
+    }
+    return complaint == selected;
   }
 
   void _sortComplaints() {
@@ -107,7 +112,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
   int _countForCategory(String categoryValue) {
     if (categoryValue == 'All') return _allStatusComplaints.length;
     return _allStatusComplaints
-        .where((c) => c.category == categoryValue)
+      .where((c) => _categoryMatches(c.category, categoryValue))
         .length;
   }
 
@@ -286,17 +291,16 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                   const SizedBox(height: 20),
                   ..._categories.map((cat) {
                     final label = cat['label'] as String;
-                    final value = (cat['value'] as String?) ?? label;
                     final icon = cat['icon'] as IconData;
                     final color = cat['color'] as Color;
-                    final isSelected = _selectedCategory == value;
-                    final count = _countForCategory(value);
+                    final isSelected = _selectedCategory == label;
+                    final count = _countForCategory(label);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
-                            _selectedCategory = value;
+                            _selectedCategory = label;
                             _applyFilters();
                           });
                           Navigator.pop(ctx);
@@ -428,7 +432,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _selectedCategory,
+                            '$_selectedCategory (${_countForCategory(_selectedCategory)})',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -451,7 +455,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                       Icon(Icons.category_rounded, size: 14, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
-                        _selectedCategory,
+                        '$_selectedCategory (${_countForCategory(_selectedCategory)})',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

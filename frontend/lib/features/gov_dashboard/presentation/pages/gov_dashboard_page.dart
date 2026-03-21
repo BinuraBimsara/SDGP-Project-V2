@@ -35,12 +35,13 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   static const List<Map<String, dynamic>> _categories = [
     {
       'label': 'Road Damage',
-      'queryCategory': 'Road',
+      'queryCategory': 'Road Damage',
       'icon': Icons.remove_road,
       'color': Color(0xFFE91E63),
     },
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -123,10 +124,18 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
     }
   }
 
+  bool _categoryMatches(String complaintCategory, String selectedCategory) {
+    final complaint = complaintCategory.trim().toLowerCase();
+    final selected = selectedCategory.trim().toLowerCase();
+    if (selected == 'road damage') {
+      return complaint == 'road damage' || complaint == 'road';
+    }
+    return complaint == selected;
+  }
+
   int _countByCategory(String category) {
     return _allComplaints
-        .where((c) => c.category.toLowerCase() == category.toLowerCase())
-        .toList()
+        .where((c) => _categoryMatches(c.category, category))
         .length;
   }
 
