@@ -130,8 +130,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    final officialId =
-        (currentUser?.uid.isNotEmpty ?? false) ? currentUser!.uid : 'official-dev';
+    final officialId = (currentUser?.uid.isNotEmpty ?? false)
+        ? currentUser!.uid
+        : 'official-dev';
     final fallbackOfficialName = _isOfficial ? 'Official' : 'Support';
 
     setState(() => _isLaunchingChat = true);
@@ -139,10 +140,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       final chatRepo = ChatRepositoryProvider.of(context);
 
-      String officialName =
-          currentUser?.displayName?.trim().isNotEmpty == true
-              ? currentUser!.displayName!.trim()
-              : fallbackOfficialName;
+      String officialName = currentUser?.displayName?.trim().isNotEmpty == true
+          ? currentUser!.displayName!.trim()
+          : fallbackOfficialName;
       if (currentUser != null) {
         final officialDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -224,11 +224,18 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         }
       }
 
+      // Calculate total comment count from actual comments
+      final totalComments = _countAllComments(topLevel);
+
       setState(() {
         _comments.clear();
         _comments.addAll(topLevel);
         _isLoadingComments = false;
+        _complaint = _complaint.copyWith(commentCount: totalComments);
       });
+
+      // Always sync comment count to Firestore to ensure persistence
+      await _repository.syncCommentCount(_complaint.id, totalComments);
     } catch (e) {
       debugPrint('Error loading comments: $e');
       if (mounted) setState(() => _isLoadingComments = false);
@@ -387,7 +394,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
-    final author = user?.displayName ?? user?.email ?? (_isOfficial ? 'Official' : 'You');
+    final author =
+        user?.displayName ?? user?.email ?? (_isOfficial ? 'Official' : 'You');
     final authorId = user?.uid ?? (_isOfficial ? 'official-dev' : 'guest-user');
     final parentId = _replyingTo?.id;
 
@@ -406,11 +414,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       parentCommentId: parentId,
       isOfficial: _isOfficial,
     )
-        .then((newCount) {
-      setState(() {
-        _complaint = _complaint.copyWith(commentCount: newCount);
-      });
-      _loadComments();
+        .then((_) async {
+      await _loadComments();
       Future.delayed(const Duration(milliseconds: 200), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -557,14 +562,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComment(_complaint.id, comment.id);
       if (!mounted) return;
-      // Reload comments to get fresh list
+      // Reload comments to get fresh list (also syncs comment count)
       await _loadComments();
-      // Update comment count from the actual loaded comments
       if (mounted) {
-        final totalComments = _countAllComments(_comments);
-        setState(() {
-          _complaint = _complaint.copyWith(commentCount: totalComments);
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Comment deleted successfully'),
@@ -752,7 +752,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               size: 20,
               color: isDark ? Colors.white : Colors.black87,
             ),
-            onPressed: () => Navigator.pop(context, ComplaintDetailResult.updated(_complaint)),
+            onPressed: () => Navigator.pop(
+                context, ComplaintDetailResult.updated(_complaint)),
           ),
           title: Text(
             'Complaint Details',
