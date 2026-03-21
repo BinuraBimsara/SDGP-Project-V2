@@ -29,6 +29,16 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   int _invalidGovEmailAttempts = 0;
 
+  String _normalizeEmail(String value) {
+    // Remove accidental spaces/tabs/newlines from copy-pasted emails.
+    return value.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+  }
+
+  bool _isAllowedOfficialEmail(String normalizedEmail) {
+    return normalizedEmail == AuthService.seededOfficialEmail ||
+        normalizedEmail.endsWith('.gov.lk');
+  }
+
   // ─── Colors ──────────────────────────────────────────────
   static const Color _amber = Color(0xFFF9A825);
   static const Color _lightAmber = Color(0xFFFFF8E1);
@@ -86,9 +96,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// Official email/password sign-in → navigate to gov dashboard.
-  /// DEV BYPASS: Skips auth validation and goes straight to gov dashboard.
   Future<void> _handleOfficialSignIn() async {
-    final email = _emailController.text.trim().toLowerCase();
+    final email = _normalizeEmail(_emailController.text);
+    final password = _passwordController.text;
     if (email.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,7 +111,11 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    if (!email.endsWith('.gov.lk')) {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (!_isAllowedOfficialEmail(email)) {
       final message = _invalidGovEmailAttempts == 0
           ? 'Only government officials are allowed log in'
           : 'Only emails that ends with .gov.lk are allowed log in';
@@ -118,11 +132,62 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     _invalidGovEmailAttempts = 0;
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const GovHomeControllerPage()),
-    );
+    setState(() => _isLoading = true);
+    try {
+      // Seeded official account bootstrap (single known account).
+      if (email == AuthService.seededOfficialEmail &&
+          password != AuthService.seededOfficialPassword) {
+        throw Exception('Invalid official email or password.');
+      }
+
+      await AuthService().ensureSeededOfficialAccount(
+        email: email,
+        password: password,
+      );
+
+      await AuthService().signInOfficial(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const GovHomeControllerPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      String message = 'Login failed. Please check your credentials.';
+      final error = e.toString().toLowerCase();
+      if (error.contains('official access not approved')) {
+        message =
+            'Official access not approved for this account. Contact admin.';
+      } else if (error.contains('seeded official account exists with a different password')) {
+        message =
+          'Use this official account password: spotit2026@135';
+      } else if (email == AuthService.seededOfficialEmail &&
+          (error.contains('wrong-password') ||
+              error.contains('invalid-credential') ||
+              error.contains('invalid password'))) {
+        message =
+          'Use the approved password for admintest@2026.gov.lk: spotit2026@135';
+      } else if (error.contains('wrong-password') ||
+          error.contains('invalid-credential') ||
+          error.contains('user-not-found')) {
+        message = 'Invalid official email or password.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ─── Build ───────────────────────────────────────────────
@@ -553,7 +618,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Dev mode: Click Login to access the Government Dashboard directly.',
+              'Official access is restricted to approved .gov.lk accounts only.',
               style: TextStyle(
                 fontSize: 12.5,
                 color: Colors.orange[900],
@@ -586,8 +651,9 @@ class _LoginPageState extends State<LoginPage> {
       decoration: _inputDecoration('official@dept.gov.lk'),
       validator: (v) {
         if (v == null || v.trim().isEmpty) return 'Email is required';
-        if (!v.contains('@')) return 'Enter a valid email';
-        if (!v.trim().toLowerCase().endsWith('.gov.lk')) {
+        final normalized = _normalizeEmail(v);
+        if (!normalized.contains('@')) return 'Enter a valid email';
+        if (!_isAllowedOfficialEmail(normalized)) {
           return 'Officials must use a .gov.lk email';
         }
         return null;
