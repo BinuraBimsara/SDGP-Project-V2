@@ -22,15 +22,13 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   final StorageService _storageService = StorageService();
 
   String _normalizeCategory(String category) {
-    final normalized = category.trim().toLowerCase();
-    if (normalized == 'road') return 'road damage';
-    return normalized;
+    // Return category as-is to match Firestore rules (case-sensitive)
+    return category;
   }
 
+  /// Case-insensitive category matching for filtering
   bool _categoryMatches(String complaintCategory, String selectedCategory) {
-    final complaint = _normalizeCategory(complaintCategory);
-    final selected = _normalizeCategory(selectedCategory);
-    return complaint == selected;
+    return complaintCategory.toLowerCase() == selectedCategory.toLowerCase();
   }
 
   /// Reference to the top-level complaints collection.
