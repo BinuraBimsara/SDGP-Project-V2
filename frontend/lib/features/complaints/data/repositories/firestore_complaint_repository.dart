@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
@@ -21,14 +22,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   final StorageService _storageService = StorageService();
 
   String _normalizeCategory(String category) {
-    switch (category) {
-      case 'Road Damage':
-        return 'Road';
-      case 'Lighting':
-        return 'Other';
-      default:
-        return category;
-    }
+    // Return category as-is to match filter values
+    return category;
   }
 
   /// Reference to the top-level complaints collection.
@@ -184,7 +179,10 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'parentCommentId': parentCommentId,
       });
 
-      final updatedDoc = await _complaintsRef.doc(complaintId).get();
+      // Force server fetch to get updated commentCount after Cloud Function increment
+      final updatedDoc = await _complaintsRef
+          .doc(complaintId)
+          .get(const GetOptions(source: Source.server));
       final data = updatedDoc.data();
       return (data?['commentCount'] as num?)?.toInt() ?? 0;
     } on FirebaseFunctionsException {
@@ -269,6 +267,27 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       });
     } catch (_) {
       // Best-effort count sync; UI will refresh from subcollection count
+    }
+  }
+
+  @override
+  Future<void> syncCommentCount(String complaintId, int count) async {
+    // Ensure user is authenticated before attempting update
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint('syncCommentCount: User not authenticated');
+      return;
+    }
+
+    try {
+      await _complaintsRef.doc(complaintId).update({
+        'commentCount': count,
+      });
+      debugPrint('syncCommentCount: Synced $complaintId to count=$count');
+    } on FirebaseException catch (e) {
+      debugPrint('syncCommentCount FirebaseException: ${e.code} - ${e.message}');
+    } catch (e) {
+      debugPrint('syncCommentCount failed: $e');
     }
   }
 
