@@ -9,6 +9,13 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
+  static const String seededOfficialEmail = 'admintest@2026.gov.lk';
+  static const String seededOfficialPassword = 'spotit2026@135';
+  static const List<String> _seededOfficialLegacyPasswords = [
+    'admin2026@135',
+    'admint.test2026',
+  ];
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
@@ -111,6 +118,97 @@ class AuthService {
     }
 
     return credential;
+  }
+
+  /// Ensures the predefined official access account exists and has official role.
+  ///
+  /// This is intended for controlled bootstrapping of a single known account.
+  Future<void> ensureSeededOfficialAccount({
+    required String email,
+    required String password,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail != seededOfficialEmail) return;
+
+    if (password != seededOfficialPassword) {
+      throw Exception('Invalid password for the approved official account.');
+    }
+
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      final uid = credential.user?.uid;
+      if (uid == null) {
+        throw Exception('Signed-in user not found.');
+      }
+
+      await _firestore.collection('users').doc(uid).set({
+        'email': normalizedEmail,
+        'displayName': 'ICT Admin Test',
+        'role': 'official',
+        'approvedOfficial': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        final created = await _auth.createUserWithEmailAndPassword(
+          email: normalizedEmail,
+          password: password,
+        );
+        final uid = created.user?.uid;
+        if (uid == null) {
+          throw Exception('Failed to create official account.');
+        }
+
+        await _firestore.collection('users').doc(uid).set({
+          'email': normalizedEmail,
+          'displayName': 'ICT Admin Test',
+          'role': 'official',
+          'approvedOfficial': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        // The login flow signs in again through the official gate.
+        await _auth.signOut();
+        return;
+      }
+
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        for (final legacyPassword in _seededOfficialLegacyPasswords) {
+          try {
+            final legacyCredential = await _auth.signInWithEmailAndPassword(
+              email: normalizedEmail,
+              password: legacyPassword,
+            );
+            final user = legacyCredential.user;
+            if (user != null) {
+              await user.updatePassword(seededOfficialPassword);
+              await _firestore.collection('users').doc(user.uid).set({
+                'email': normalizedEmail,
+                'displayName': 'ICT Admin Test',
+                'role': 'official',
+                'approvedOfficial': true,
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+              await _auth.signOut();
+              return;
+            }
+          } on FirebaseAuthException {
+            // Try next legacy password.
+          }
+        }
+
+        throw Exception(
+          'Seeded official account exists with a different password. '
+          'Please use the current approved password: $seededOfficialPassword',
+        );
+      }
+
+      rethrow;
+    }
   }
   // ──────────────────── Sign Out ────────────────────
 
