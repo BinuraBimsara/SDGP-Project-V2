@@ -10,11 +10,33 @@ class AuthService {
   AuthService._internal();
 
   static const String seededOfficialEmail = 'admintest@2026.gov.lk';
+  static const List<String> seededOfficialEmails = [
+    seededOfficialEmail,
+    'admin.test@ict.gov.lk',
+  ];
   static const String seededOfficialPassword = 'spotit2026@135';
+  static const Set<String> allowedOfficialRoles = {
+    'official',
+    'government',
+    'admin',
+    'developer',
+    'dev',
+  };
   static const List<String> _seededOfficialLegacyPasswords = [
+    'GovTest2026!',
     'admin2026@135',
     'admint.test2026',
   ];
+
+  static bool isSeededOfficialEmail(String email) {
+    final normalized = email.trim().toLowerCase();
+    return seededOfficialEmails.contains(normalized);
+  }
+
+  static bool isAcceptedSeededOfficialPassword(String password) {
+    return password == seededOfficialPassword ||
+        _seededOfficialLegacyPasswords.contains(password);
+  }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -100,8 +122,9 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    final normalizedEmail = email.trim().toLowerCase();
     final credential = await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
+      email: normalizedEmail,
       password: password,
     );
 
@@ -111,8 +134,29 @@ class AuthService {
     }
 
     final userDoc = await _firestore.collection('users').doc(uid).get();
-    final role = userDoc.data()?['role'] as String?;
-    if (role != 'official' && role != 'government') {
+    final role = (userDoc.data()?['role'] as String?)?.toLowerCase();
+    if (!allowedOfficialRoles.contains(role)) {
+      // Fallback: if an admin created/updated an official record using a
+      // non-uid document id, locate by email and link it to the auth uid.
+      final byEmail = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: normalizedEmail)
+          .limit(1)
+          .get();
+
+      if (byEmail.docs.isNotEmpty) {
+        final emailData = byEmail.docs.first.data();
+        final emailRole = (emailData['role'] as String?)?.toLowerCase();
+        if (allowedOfficialRoles.contains(emailRole)) {
+          await _firestore.collection('users').doc(uid).set({
+            ...emailData,
+            'email': normalizedEmail,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          return credential;
+        }
+      }
+
       await _auth.signOut();
       throw Exception('Official access not approved for this account.');
     }
@@ -128,9 +172,9 @@ class AuthService {
     required String password,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail != seededOfficialEmail) return;
+    if (!isSeededOfficialEmail(normalizedEmail)) return;
 
-    if (password != seededOfficialPassword) {
+    if (!isAcceptedSeededOfficialPassword(password)) {
       throw Exception('Invalid password for the approved official account.');
     }
 
@@ -147,7 +191,7 @@ class AuthService {
       await _firestore.collection('users').doc(uid).set({
         'email': normalizedEmail,
         'displayName': 'ICT Admin Test',
-        'role': 'official',
+        'role': 'admin',
         'approvedOfficial': true,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -165,7 +209,7 @@ class AuthService {
         await _firestore.collection('users').doc(uid).set({
           'email': normalizedEmail,
           'displayName': 'ICT Admin Test',
-          'role': 'official',
+          'role': 'admin',
           'approvedOfficial': true,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -189,7 +233,7 @@ class AuthService {
               await _firestore.collection('users').doc(user.uid).set({
                 'email': normalizedEmail,
                 'displayName': 'ICT Admin Test',
-                'role': 'official',
+                'role': 'admin',
                 'approvedOfficial': true,
                 'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
