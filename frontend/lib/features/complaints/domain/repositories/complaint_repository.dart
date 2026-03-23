@@ -44,6 +44,9 @@ abstract class ComplaintRepository {
   /// Delete a single comment from a complaint. Also deletes child replies.
   Future<void> deleteComment(String complaintId, String commentId);
 
+  /// Sync the comment count to Firestore. Used to fix count mismatches.
+  Future<void> syncCommentCount(String complaintId, int count);
+
   /// Update the status of a complaint (e.g., 'Pending' → 'In Progress' → 'Resolved').
   Future<Complaint> updateStatus(String complaintId, String newStatus);
 

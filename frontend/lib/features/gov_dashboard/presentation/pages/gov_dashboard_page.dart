@@ -35,12 +35,13 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   static const List<Map<String, dynamic>> _categories = [
     {
       'label': 'Road Damage',
-      'queryCategory': 'Road',
+      'queryCategory': 'Road Damage',
       'icon': Icons.remove_road,
       'color': Color(0xFFE91E63),
     },
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -123,10 +124,18 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
     }
   }
 
+  bool _categoryMatches(String complaintCategory, String selectedCategory) {
+    final complaint = complaintCategory.trim().toLowerCase();
+    final selected = selectedCategory.trim().toLowerCase();
+    if (selected == 'road damage') {
+      return complaint == 'road damage' || complaint == 'road';
+    }
+    return complaint == selected;
+  }
+
   int _countByCategory(String category) {
     return _allComplaints
-        .where((c) => c.category.toLowerCase() == category.toLowerCase())
-        .toList()
+        .where((c) => _categoryMatches(c.category, category))
         .length;
   }
 
@@ -158,22 +167,25 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Location Bar ──
-              _buildLocationBar(isDark),
-              const SizedBox(height: 16),
-
               // ── Welcome Card ──
               _buildWelcomeCard(isDark),
               const SizedBox(height: 28),
 
               // ── Section Title ──
-              Text(
-                'Report Categories',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Report Categories',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  _buildLocationBar(isDark),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -201,46 +213,43 @@ class _GovDashboardPageState extends State<GovDashboardPage> {
   }
 
   Widget _buildLocationBar(bool isDark) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: GestureDetector(
-        onTap: _changeLocation,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          constraints: const BoxConstraints(maxWidth: 200),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withAlpha(26)
-                  : Colors.black.withAlpha(26),
-            ),
+    return GestureDetector(
+      onTap: _changeLocation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        constraints: const BoxConstraints(maxWidth: 170),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlpha(26)
+                : Colors.black.withAlpha(26),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _locationFetched
-                    ? Icons.location_on
-                    : Icons.location_searching_rounded,
-                color: const Color(0xFFF9A825),
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  _locationName,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _locationFetched
+                  ? Icons.location_on
+                  : Icons.location_searching_rounded,
+              color: const Color(0xFFF9A825),
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _locationName,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

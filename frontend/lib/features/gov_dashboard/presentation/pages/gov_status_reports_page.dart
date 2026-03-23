@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/widgets/gov_report_card.dart';
@@ -41,14 +43,10 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
 
   static const List<Map<String, dynamic>> _categories = [
     {'label': 'All', 'icon': Icons.all_inclusive, 'color': Color(0xFFF9A825)},
-    {
-      'label': 'Road Damage',
-      'value': 'Road',
-      'icon': Icons.remove_road,
-      'color': Color(0xFFE91E63),
-    },
+    {'label': 'Road Damage', 'icon': Icons.remove_road, 'color': Color(0xFFE91E63)},
     {'label': 'Infrastructure', 'icon': Icons.construction, 'color': Color(0xFF2196F3)},
     {'label': 'Waste', 'icon': Icons.delete_outline, 'color': Color(0xFF4CAF50)},
+    {'label': 'Lighting', 'icon': Icons.lightbulb_outline, 'color': Color(0xFFFF9800)},
     {'label': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF607D8B)},
   ];
 
@@ -82,10 +80,19 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
       _complaints = List.from(_allStatusComplaints);
     } else {
       _complaints = _allStatusComplaints
-          .where((c) => c.category == _selectedCategory)
+          .where((c) => _categoryMatches(c.category, _selectedCategory))
           .toList();
     }
     _sortComplaints();
+  }
+
+  bool _categoryMatches(String complaintCategory, String selectedCategory) {
+    final complaint = complaintCategory.trim().toLowerCase();
+    final selected = selectedCategory.trim().toLowerCase();
+    if (selected == 'road damage') {
+      return complaint == 'road damage' || complaint == 'road';
+    }
+    return complaint == selected;
   }
 
   void _sortComplaints() {
@@ -100,6 +107,13 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
         _complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         break;
     }
+  }
+
+  int _countForCategory(String categoryValue) {
+    if (categoryValue == 'All') return _allStatusComplaints.length;
+    return _allStatusComplaints
+      .where((c) => _categoryMatches(c.category, categoryValue))
+        .length;
   }
 
   Future<void> _onStatusChanged(String complaintId, String newStatus) async {
@@ -234,108 +248,112 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
+      barrierColor: Colors.transparent,
       builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(10),
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(10),
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.category_rounded,
-                  color: Color(0xFFF9A825),
-                  size: 28,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Select Category',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : Colors.black87,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.category_rounded,
+                    color: Color(0xFFF9A825),
+                    size: 28,
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Filter by report category',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : Colors.black45,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ..._categories.map((cat) {
-                  final label = cat['label'] as String;
-                  final value = (cat['value'] as String?) ?? label;
-                  final icon = cat['icon'] as IconData;
-                  final color = cat['color'] as Color;
-                  final isSelected = _selectedCategory == value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = value;
-                          _applyFilters();
-                        });
-                        Navigator.pop(ctx);
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? color.withAlpha(isDark ? 40 : 25)
-                              : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5)),
-                          borderRadius: BorderRadius.circular(12),
-                          border: isSelected
-                              ? Border.all(color: color, width: 1.5)
-                              : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(icon, size: 18, color: isSelected ? color : (isDark ? Colors.white54 : Colors.black45)),
-                            const SizedBox(width: 12),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected
-                                    ? color
-                                    : (isDark ? Colors.white70 : Colors.black87),
-                              ),
-                            ),
-                            const Spacer(),
-                            if (isSelected)
-                              Icon(Icons.check_circle, color: color, size: 20),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Text(
-                    'Close',
+                  const SizedBox(height: 12),
+                  Text(
+                    'Select Category',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Filter by report category',
+                    style: TextStyle(
+                      fontSize: 13,
                       color: isDark ? Colors.white54 : Colors.black45,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  ..._categories.map((cat) {
+                    final label = cat['label'] as String;
+                    final icon = cat['icon'] as IconData;
+                    final color = cat['color'] as Color;
+                    final isSelected = _selectedCategory == label;
+                    final count = _countForCategory(label);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = label;
+                            _applyFilters();
+                          });
+                          Navigator.pop(ctx);
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? color.withAlpha(isDark ? 40 : 25)
+                                : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5)),
+                            borderRadius: BorderRadius.circular(12),
+                            border: isSelected
+                                ? Border.all(color: color, width: 1.5)
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(icon, size: 18, color: isSelected ? color : (isDark ? Colors.white54 : Colors.black45)),
+                              const SizedBox(width: 12),
+                              Text(
+                                '$label ($count)',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? color
+                                      : (isDark ? Colors.white70 : Colors.black87),
+                                ),
+                              ),
+                              const Spacer(),
+                              if (isSelected)
+                                Icon(Icons.check_circle, color: color, size: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Text(
+                      'Close',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white54 : Colors.black45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -414,7 +432,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _selectedCategory,
+                            '$_selectedCategory (${_countForCategory(_selectedCategory)})',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -437,7 +455,7 @@ class _GovStatusReportsPageState extends State<GovStatusReportsPage> {
                       Icon(Icons.category_rounded, size: 14, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
-                        _selectedCategory,
+                        '$_selectedCategory (${_countForCategory(_selectedCategory)})',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

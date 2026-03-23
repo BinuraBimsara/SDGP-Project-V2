@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotit/main.dart';
 
 /// Wraps the app in a [RepaintBoundary] + [Stack] and provides a static
@@ -99,8 +100,15 @@ class ThemeSwitcherState extends State<ThemeSwitcher>
         _boundarySize = boundary.size;
       });
 
-      // 4. Toggle the theme underneath.
-      SpotItApp.themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+      // 4. Toggle the theme underneath and persist the choice.
+      final newMode = isDark ? ThemeMode.light : ThemeMode.dark;
+      SpotItApp.themeNotifier.value = newMode;
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setString(
+          'themeMode',
+          newMode == ThemeMode.dark ? 'dark' : 'light',
+        ),
+      );
 
       // 5. Reset animation.
       _controller.value = 0.0;

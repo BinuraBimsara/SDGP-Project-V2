@@ -4,10 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotit/firebase_options.dart';
 import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/auth/presentation/pages/complete_profile_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_controller_page.dart';
+import 'package:spotit/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart';
 import 'package:spotit/features/complaints/data/repositories/firestore_complaint_repository.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:spotit/features/chat/data/repositories/firestore_chat_repository.dart';
@@ -67,6 +69,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Load persisted theme before rendering the app.
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('themeMode');
+  if (savedTheme == 'dark') {
+    SpotItApp.themeNotifier.value = ThemeMode.dark;
+  }
 
   if (kIsWeb) {
     const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
@@ -178,6 +187,29 @@ class SpotItApp extends StatelessWidget {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  static const Set<String> _govRoles = {
+    'official',
+    'government',
+    'admin',
+    'developer',
+    'dev',
+  };
+
+  Future<String?> _getUserRole(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (!doc.exists) return null;
+      final raw = doc.data()?['role'];
+      if (raw is String) return raw.toLowerCase();
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Checks if the citizen's profile has been completed in Firestore.
   Future<bool> _isProfileComplete(String uid) async {
     try {
@@ -208,22 +240,37 @@ class AuthGate extends StatelessWidget {
         // User is signed in → check if profile is complete.
         if (snapshot.hasData) {
           final user = snapshot.data!;
-          return FutureBuilder<bool>(
-            future: _isProfileComplete(user.uid),
-            builder: (context, profileSnapshot) {
-              if (profileSnapshot.connectionState == ConnectionState.waiting) {
+          return FutureBuilder<String?>(
+            future: _getUserRole(user.uid),
+            builder: (context, roleSnapshot) {
+              if (roleSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
 
-              // Profile is complete → go to home.
-              if (profileSnapshot.data == true) {
-                return const HomeControllerPage();
+              if (_govRoles.contains(roleSnapshot.data)) {
+                return const GovHomeControllerPage();
               }
 
-              // Profile not complete → show complete profile page.
-              return const CompleteProfilePage();
+              return FutureBuilder<bool>(
+                future: _isProfileComplete(user.uid),
+                builder: (context, profileSnapshot) {
+                  if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  // Profile is complete → go to home.
+                  if (profileSnapshot.data == true) {
+                    return const HomeControllerPage();
+                  }
+
+                  // Profile not complete → show complete profile page.
+                  return const CompleteProfilePage();
+                },
+              );
             },
           );
         }

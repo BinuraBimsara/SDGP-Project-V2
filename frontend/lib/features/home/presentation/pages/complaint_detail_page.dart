@@ -130,23 +130,29 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     }
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    final officialId = (currentUser?.uid.isNotEmpty ?? false)
+        ? currentUser!.uid
+        : 'official-dev';
+    final fallbackOfficialName = _isOfficial ? 'Official' : 'Support';
 
     setState(() => _isLaunchingChat = true);
 
     try {
       final chatRepo = ChatRepositoryProvider.of(context);
 
-      final officialDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-      final officialName = officialDoc.data()?['name'] as String? ??
-          currentUser.displayName ??
-          'Official';
+      String officialName = currentUser?.displayName?.trim().isNotEmpty == true
+          ? currentUser!.displayName!.trim()
+          : fallbackOfficialName;
+      if (currentUser != null) {
+        final officialDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+        officialName = officialDoc.data()?['name'] as String? ?? officialName;
+      }
 
       final session = await chatRepo.getOrCreateChat(
-        officialId: currentUser.uid,
+        officialId: officialId,
         citizenId: _complaint.authorId,
         complaintId: _complaint.id,
         officialName: officialName,
@@ -159,7 +165,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         MaterialPageRoute(
           builder: (_) => ChatScreen(
             chatId: session.id,
-            otherUserName: _complaint.authorName,
+            otherUserName: session.citizenName.isNotEmpty
+                ? session.citizenName
+                : _complaint.authorName,
             isOfficial: true,
           ),
         ),
@@ -216,11 +224,18 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
         }
       }
 
+      // Calculate total comment count from actual comments
+      final totalComments = _countAllComments(topLevel);
+
       setState(() {
         _comments.clear();
         _comments.addAll(topLevel);
         _isLoadingComments = false;
+        _complaint = _complaint.copyWith(commentCount: totalComments);
       });
+
+      // Always sync comment count to Firestore to ensure persistence
+      await _repository.syncCommentCount(_complaint.id, totalComments);
     } catch (e) {
       debugPrint('Error loading comments: $e');
       if (mounted) setState(() => _isLoadingComments = false);
@@ -379,14 +394,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     if (_commentController.text.trim().isEmpty) return;
     final text = _commentController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to comment.')),
-      );
-      return;
-    }
-    final author = user.displayName ?? user.email ?? 'You';
-    final authorId = user.uid;
+    final author =
+        user?.displayName ?? user?.email ?? (_isOfficial ? 'Official' : 'You');
+    final authorId = user?.uid ?? (_isOfficial ? 'official-dev' : 'guest-user');
     final parentId = _replyingTo?.id;
 
     _commentController.clear();
@@ -404,11 +414,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
       parentCommentId: parentId,
       isOfficial: _isOfficial,
     )
-        .then((newCount) {
-      setState(() {
-        _complaint = _complaint.copyWith(commentCount: newCount);
-      });
-      _loadComments();
+        .then((_) async {
+      await _loadComments();
       Future.delayed(const Duration(milliseconds: 200), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -555,14 +562,9 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
     try {
       await _repository.deleteComment(_complaint.id, comment.id);
       if (!mounted) return;
-      // Reload comments to get fresh list
+      // Reload comments to get fresh list (also syncs comment count)
       await _loadComments();
-      // Update comment count from the actual loaded comments
       if (mounted) {
-        final totalComments = _countAllComments(_comments);
-        setState(() {
-          _complaint = _complaint.copyWith(commentCount: totalComments);
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Comment deleted successfully'),
@@ -750,7 +752,8 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               size: 20,
               color: isDark ? Colors.white : Colors.black87,
             ),
-            onPressed: () => Navigator.pop(context, ComplaintDetailResult.updated(_complaint)),
+            onPressed: () => Navigator.pop(
+                context, ComplaintDetailResult.updated(_complaint)),
           ),
           title: Text(
             'Complaint Details',
@@ -776,18 +779,6 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
             ),
           ],
         ),
-        floatingActionButton: _isOfficial
-            ? FloatingActionButton.extended(
-                onPressed: _openChatWithCitizen,
-                backgroundColor: const Color(0xFF2EAA5E),
-                icon: const Icon(Icons.chat_rounded, color: Colors.white),
-                label: const Text(
-                  'Contact Citizen',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-              )
-            : null,
         body: Column(
           children: [
             Expanded(
@@ -1037,6 +1028,41 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                 ),
               ),
             ),
+
+            if (_isOfficial)
+              Container(
+                width: double.infinity,
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLaunchingChat ? null : _openChatWithCitizen,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2EAA5E),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: _isLaunchingChat
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.chat_rounded),
+                    label: Text(
+                      _isLaunchingChat ? 'Opening chat...' : 'Contact Citizen',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
 
             // Comment input bar
             Container(

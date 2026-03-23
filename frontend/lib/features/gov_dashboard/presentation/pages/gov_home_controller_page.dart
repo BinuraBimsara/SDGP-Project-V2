@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:spotit/features/auth/data/services/auth_service.dart';
-import 'package:spotit/features/auth/presentation/pages/login_page.dart';
+import 'package:spotit/features/auth/presentation/pages/get_started_page.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_dashboard_page.dart';
 import 'package:spotit/features/gov_dashboard/presentation/pages/gov_profile_page.dart';
 import 'package:spotit/features/notifications/notification_badge.dart';
@@ -59,16 +60,80 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
     }
   }
 
-  Future<void> _handleLogout() async {
-    // Close the drawer first so the modal route doesn't block navigation
-    Navigator.pop(context);
+  Future<void> _handleLogout({bool fromDrawer = false}) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.logout_rounded, color: Color(0xFFEF5350), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Log Out',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to log out?',
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'No',
+              style: TextStyle(color: isDark ? Colors.white54 : Colors.black45),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF5350),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+    if (fromDrawer && Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
     await AuthService().signOut();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+      MaterialPageRoute(builder: (_) => const GetStartedPage()),
       (route) => false,
     );
+  }
+
+  Future<void> _openAboutWebsite() async {
+    const url = 'https://teamspotit.com.lk/';
+    final uri = Uri.parse(url);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open website')),
+      );
+    }
   }
 
   @override
@@ -196,7 +261,10 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
             'About',
             'Learn more about SpotIT',
             textColor,
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pop(context);
+              _openAboutWebsite();
+            },
           ),
           _buildDrawerItem(
             Icons.help_outline_rounded,
@@ -225,7 +293,7 @@ class _GovHomeControllerPageState extends State<GovHomeControllerPage> {
                 fontSize: 15,
               ),
             ),
-            onTap: _handleLogout,
+            onTap: () => _handleLogout(fromDrawer: true),
           ),
           Padding(
             padding: const EdgeInsets.all(24.0),
