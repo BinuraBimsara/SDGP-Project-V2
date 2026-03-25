@@ -1,0 +1,921 @@
+﻿commit 0d33626098ec71c0edd2b67e789601a4e08db2de
+Merge: b74c4dd 7882d95
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sun Mar 22 01:55:58 2026 +0530
+
+    Merge pull request #96 from BinuraBimsara/feat/data-architecture
+    
+    fix: preserve category case to match Firestore rules
+
+commit 7882d952fb0b01acefd3b675213da77c560e6ffe
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sun Mar 22 00:50:19 2026 +0530
+
+    fix: preserve category case to match Firestore rules
+    
+    The _normalizeCategory was converting to lowercase which caused
+    Firestore rules validation to fail. Categories must match exactly
+    (e.g., 'Road Damage' not 'road damage').
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit cf9b3d960cff6dd9ce4164928b53c5cd0a407295
+Merge: 9b627db 268be5e
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 21 18:01:30 2026 +0530
+
+    Merge pull request #93 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit 268be5ea9b9de813809a66dec633d66a6b8e9b89
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 21 17:53:38 2026 +0530
+
+    fix: update Firestore rules to allow commentCount sync
+    
+    Change changedKeys to affectedKeys for commentCount update rule.
+    This allows the field to be added or updated, not just changed.
+
+M	firestore.rules
+
+commit 74a46089c588f343755aca21ea3516b6035f856e
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 21 17:53:30 2026 +0530
+
+    fix: sync comment count from actual comments in detail page
+    
+    - Calculate comment count from loaded comments for accuracy
+    - Sync count to Firestore after loading for persistence
+    - Simplify add/delete comment flows by relying on loadComments
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit c02271c55a43e7377122d3611907f7e6c0333ff9
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 21 17:53:20 2026 +0530
+
+    feat: implement comment count sync and fix category filter
+    
+    - Add syncCommentCount method to persist count to Firestore
+    - Force server fetch after Cloud Function to get updated count
+    - Remove category normalization to fix filter functionality
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit 383841fcbb3f096d6beb78dd1fef3a54172f4715
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 21 17:53:11 2026 +0530
+
+    feat: add syncCommentCount method to repository interface
+    
+    New method to sync comment count to Firestore for persistence.
+
+M	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+
+commit 3287ebf62f1be6b32a893a9c20272cccd8d9d5c9
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 21 17:53:02 2026 +0530
+
+    fix: remove category normalization in report modal
+    
+    Categories now stored exactly as selected by user instead of
+    converting 'Lighting' to 'Other' and 'Road Damage' to 'Road'.
+    This fixes filter functionality in home feed.
+
+M	frontend/lib/features/home/presentation/widgets/report_issue_modal.dart
+
+commit 9b627dba7bc63be273c848fa27722bf7eeea752e
+Merge: 462a2ae 8c9fedb
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Mon Mar 16 00:58:54 2026 +0530
+
+    Merge pull request #91 from BinuraBimsara/feat/data-architecture
+    
+    Added files to git Ignore
+
+commit 8c9fedbe5d9b644d988fff1d5209bbc938ca1951
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 16 00:56:31 2026 +0530
+
+    Added files to git Ignore
+
+M	.gitignore
+D	backend/.dart_tool/package_config.json
+D	backend/.dart_tool/package_graph.json
+D	backend/.dart_tool/version
+D	backend/.flutter-plugins-dependencies
+M	backend/pubspec.lock
+A	desktop.ini
+M	frontend/lib/features/gov_dashboard/presentation/pages/gov_profile_page.dart
+M	frontend/pubspec.lock
+
+commit 1a9589d22415c96b0a927db5e20f8b2d3b3ca288
+Merge: c34a832 569b894
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 14 19:08:25 2026 +0530
+
+    Merge pull request #84 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit 569b8941179546b582dfab4cffd646ad24c0c4f0
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 14 18:24:19 2026 +0530
+
+    fix: back navigation and data propagation from detail page
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+M	frontend/lib/features/dashboard/presentation/pages/my_reports_page.dart
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+
+commit 6ae2747455abebb894902aaeb46680745bff6f0e
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 14 18:12:48 2026 +0530
+
+    fix: comment count sync and deletion logic
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit ee41b57599f2a7309a6e353619bd1d02dea7c1e8
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 14 18:01:05 2026 +0530
+
+    chore: update firestore rules for comment count updates
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+M	firestore.rules
+
+commit c6e6f44dd0632449fc32ef5efdfcfe1494dbaa29
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 14 17:53:24 2026 +0530
+
+    fix: preserve home feed state on tab switch
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+M	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+
+commit 52aa317af7bc1405da48150051351b9993c17563
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 14 17:45:12 2026 +0530
+
+    fix: report validation logic for title and description
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+M	frontend/lib/features/home/presentation/widgets/report_issue_modal.dart
+
+commit c34a83235071c0b5ed332ba83d1d0b6962b5217c
+Merge: 7c51a05 06607eb
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 14 17:12:09 2026 +0530
+
+    Merge pull request #83 from BinuraBimsara/feat/notifications
+    
+    Feat/notifications
+
+commit 7c51a05d9b8582c1b78ea1666c029300a628b291
+Merge: 3c83df5 73aac36
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 14 01:42:53 2026 +0530
+
+    Merge pull request #82 from BinuraBimsara/feat/notifications
+    
+    Feat/notifications
+
+commit 2561c83d02c902fe17301d3efe85be482647105f
+Merge: f5b66ac df09b07
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Mon Mar 9 22:08:12 2026 +0530
+
+    Merge pull request #77 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit df09b07582a05bdd6a3642521453b2bd1fadfb5a
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 21:41:00 2026 +0530
+
+    redirect to feed after delete
+
+M	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+
+commit 25feaf253372d427df03a2b08cde5fcd793ec499
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 21:28:00 2026 +0530
+
+    handle deleted result in reports
+
+M	frontend/lib/features/dashboard/presentation/pages/my_reports_page.dart
+
+commit 4cd376d5c0ee63607bd5364210ea9a02738de663
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 21:16:00 2026 +0530
+
+    add delete callback prop
+
+M	frontend/lib/features/dashboard/presentation/pages/my_reports_page.dart
+
+commit bf66e8ff56451ede3401fa9b03679d1923064de0
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 21:05:00 2026 +0530
+
+    use typed deleted pop result
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 5b0e91ea2d196207ec296bee0f76b1d77b33f2b4
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 20:57:00 2026 +0530
+
+    add delete result enum
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit b8f0d72f1867cc1449caeacdbd4a1974678fbd9d
+Merge: 94ce881 850dee5
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Mon Mar 9 02:52:54 2026 +0530
+
+    Merge pull request #73 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit 850dee5ae8ad10185a7a9bb04d7cabde613e6c67
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 02:32:00 2026 +0530
+
+    fix(detail): add const to location icon for lint compliance
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 3b9af4533df11dcb8cdf246711a981bb163dec4c
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 02:20:00 2026 +0530
+
+    fix(detail): hide distance badge for reports without coordinates
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 4a2fec1cc379c5382c9eb31aca57bcdad9b428ea
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 02:08:00 2026 +0530
+
+    feat(detail): show distance badge next to status badge
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 34cfdd67e3391c1bb8c3e209ad780d76a6287186
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:55:00 2026 +0530
+
+    feat(detail): add distance formatting helper method
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit f41c7865540fdb1c829eaadff94a78c294a10b39
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:42:00 2026 +0530
+
+    refactor(repo): clean up distance sorting comments
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit 94ce881041849d1e21ccbe0aa97f8a101bb6b165
+Merge: 42b1b07 18da7f3
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:32:57 2026 +0530
+
+    Merge pull request #72 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit b5957da500cb96970cc6289adc6c516d65a3aa39
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:30:00 2026 +0530
+
+    fix(repo): push complaints without coordinates to end of feed
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit 18da7f3801c4e4449d2ca761cad6ab1641188e01
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 00:35:00 2026 +0530
+
+    feat(complaint): add pull-to-refresh for comments & complaint data
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 49b44cd7261484e7d56793c9544f0ee9bb817903
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 00:15:00 2026 +0530
+
+    feat(feed): implement smooth scroll to top on home tap via shared controller
+
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+
+commit fe358370dacb7ca4e6ef7701fbaa787d9967d915
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sun Mar 8 23:55:00 2026 +0530
+
+    feat: add continuous bounce animation to home tab
+
+M	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+
+commit c6e873715fea2e6fd7bd2635f79ef77ee70820fd
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:18:00 2026 +0530
+
+    feat(repo): sort complaints by distance closest first
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit ed2b3a0f7a00e69fe207245ccdd01c689ea5e8f7
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 01:08:00 2026 +0530
+
+    feat(repo): calculate distance for each complaint using user location
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit 0bc1848b4a3c828b8e71462a70418487f9d058ba
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 00:58:00 2026 +0530
+
+    feat(repo): add haversine formula for distance calculation
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit fd2011f5fae4e3333228c76c2bc27520d04f6381
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 9 00:52:00 2026 +0530
+
+    feat(repo): import dart:math for distance calculations
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit c2b6fa88c998d53b0446f4e158d185fc6f7a8a7d
+Merge: 30ffb17 d1457ad
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 7 20:18:24 2026 +0530
+
+    Merge pull request #61 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit d1457ad53763995115878ffa06a5b5f083ba8666
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 7 18:28:00 2026 +0530
+
+    Secure geocoding API key using build-time environment variable
+
+M	backend/lib/data_architecture/google_maps_api.dart
+
+commit 2ceb4062cb255a922759fab650297731bf4c7a59
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 7 17:38:00 2026 +0530
+
+    Fix Google Maps API key placeholder in AndroidManifest
+
+M	frontend/android/app/src/main/AndroidManifest.xml
+
+commit e6f68c159942c35475216037d8348bcb5b0b93f0
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 7 16:49:00 2026 +0530
+
+    Add Secrets.xcconfig to gitignore for API key security
+
+M	.gitignore
+
+commit 22ba56c76af9ac3f29cc541a12ff49b13cd1bd23
+Merge: 4a6ffe8 03988ae
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Mar 7 03:08:20 2026 +0530
+
+    Merge pull request #59 from BinuraBimsara/feat/data-architecture
+    
+    Fixed the logout issue in gov-dashboard
+
+commit 03988aedecf44a398d5145581490465688f75baf
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sat Mar 7 03:07:00 2026 +0530
+
+    Fixed the logout issue in gov-dashboard
+
+D	frontend/assets/images/app_icon.png
+D	frontend/assets/images/home_logo.png
+M	frontend/lib/features/gov_dashboard/presentation/pages/gov_home_controller_page.dart
+M	frontend/pubspec.yaml
+
+commit 775ece8ba0455507cbd573257b18801a2fb67158
+Merge: 0055c2f 385c8ea
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Tue Mar 3 01:17:35 2026 +0530
+
+    Merge pull request #45 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit 385c8ea126b2c037dfece32f7e259d21d41fcf3c
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Tue Mar 3 01:00:00 2026 +0530
+
+    Enhance comments with delete, reply, nested threading, and blur
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 479e9fe3c83a14b8168c4543a51b7e27670c4631
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Tue Mar 3 00:24:00 2026 +0530
+
+    Update Firestore repository for comment CRUD
+
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit 7654846d6be77c9758b1413e2f0fe57217d7d829
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 23:48:00 2026 +0530
+
+    Update repository interface with comment operations
+
+M	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+
+commit d4b890c8e6dfebfd8a6afc088126643dab94bc18
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 23:12:00 2026 +0530
+
+    Remove deprecated complaint repository stub
+
+D	frontend/lib/features/complaints/data/repositories/complaint_repository.dart
+
+commit 16aae35f47cc82e7d7e4b60dbafa24e3f0cdf54f
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 22:36:00 2026 +0530
+
+    Remove dummy complaint repository
+
+D	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+
+commit aa0ad67b94b2640add95095eda6da9cd804319f1
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 22:00:00 2026 +0530
+
+    Remove dummy complaints seed data
+
+D	frontend/lib/features/complaints/data/dummy_complaints.dart
+
+commit e586a83b06a2b79e9efc7091e4d27449df2a11be
+Merge: d9eb154 3669410
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Mon Mar 2 16:47:26 2026 +0530
+
+    Merge pull request #43 from BinuraBimsara/feat/data-architecture
+    
+    Feat/data architecture
+
+commit 36694100b124e518bf69127dccdb91fbf353703b
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 16:30:00 2026 +0530
+
+    perf(ui): optimize blur animations for filter dialogs on low-end devices
+
+M	backend/.dart_tool/package_config.json
+M	backend/.dart_tool/version
+M	backend/.flutter-plugins-dependencies
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+
+commit 4280a92872f6cec95e57aa28eafa8e68cee748bd
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 16:12:00 2026 +0530
+
+    feat(ui): add delete button and confirmation dialog for authored complaints
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit f54e40bf3ac580ea2701bdd9a0095e79b6472099
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 15:55:00 2026 +0530
+
+    feat(repositories): implement complaint deletion logic in data layer
+
+M	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+
+commit fa8b1df9f6201f55a4d3baa6d386e3c38e09c163
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 15:38:00 2026 +0530
+
+    feat(domain): define complaint deletion contract in repository interface
+
+M	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+
+commit 0b7556430aff73e61bc18dc0fe23909117662cb1
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 15:21:00 2026 +0530
+
+    feat(ui): display username on complaint feed cards and detail page
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+
+commit 62fb8ee675ca751d12ecd57d10440c423b537a91
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 15:04:00 2026 +0530
+
+    feat(ui): display author name on complaint feed cards
+
+M	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+
+commit f2ff683ef31ee22d56439ffb6435ded3cfeec32f
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 14:47:00 2026 +0530
+
+    feat(ui): capture author name in Report Issue modal
+
+M	frontend/lib/features/home/presentation/widgets/report_issue_modal.dart
+
+commit b6d66852b7b8e2de41290abad6d998742b6562fd
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Mon Mar 2 14:30:00 2026 +0530
+
+    feat(models): add authorName to Complaint data structure
+
+M	frontend/lib/features/complaints/data/models/complaint_model.dart
+
+commit 48631ce70a593740882070deaa0f83842b5eed79
+Merge: 396afc2 878e3c9
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sun Mar 1 20:35:56 2026 +0530
+
+    Merge pull request #38 from BinuraBimsara/feat/data-architecture
+    
+    Created the profile section
+
+commit 878e3c9ba1150d72f2824ff002875b360345cd05
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sun Mar 1 20:33:27 2026 +0530
+
+    Created the profile section
+
+M	frontend/lib/features/complaints/data/models/complaint_model.dart
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+M	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+M	frontend/lib/features/profile/presentation/pages/profile_page.dart
+
+commit 396afc257dc5a52a30652376a8298b1ecf9fbba0
+Merge: b81ae74 1acfd1e
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sun Mar 1 19:48:44 2026 +0530
+
+    Merge pull request #37 from BinuraBimsara/feat/data-architecture
+    
+    Upvote button and comments integrated to database
+
+commit 1acfd1eb467547a82d51a02246968f9c1ede94bd
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sun Mar 1 19:41:40 2026 +0530
+
+    Upvote button and comments integrated to database
+
+M	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+M	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+M	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+M	frontend/lib/features/dashboard/presentation/pages/my_reports_page.dart
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+M	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+M	frontend/lib/features/home/presentation/widgets/report_issue_modal.dart
+
+commit c6ba2b4f8ea1f8eab8b638b678ecfc44c26cde05
+Merge: 6fd3f6a 6d6b847
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sun Mar 1 17:09:54 2026 +0530
+
+    Merge pull request #33 from BinuraBimsara/feat/data-architecture
+    
+    Fixed an error when trying to run via edge
+
+commit 6d6b847f82076eac68be063be6a72a2fe5ec3811
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Sun Mar 1 17:09:07 2026 +0530
+
+    Fixed an error when trying to run via edge
+
+M	frontend/lib/features/auth/presentation/pages/login_page.dart
+
+commit bbe0e70b36e2be6b1a963a3214da30975f48668f
+Merge: d890adb b0c27e0
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Fri Feb 27 23:47:48 2026 +0530
+
+    Merge pull request #22 from BinuraBimsara/feat/data-architecture
+    
+    Redesigned the filter + location section
+
+commit b0c27e0d1b652ac336432da184f755a38b4e649c
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Fri Feb 27 23:45:58 2026 +0530
+
+    Redesigned the filter + location section
+
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+
+commit d890adb84d38b5b5932cda571be34ee9d4d84c00
+Merge: 8aa48aa 6a3f841
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Fri Feb 27 16:15:42 2026 +0530
+
+    Merge pull request #21 from BinuraBimsara/feat/data-architecture
+    
+    Redesigned the homepage UI
+
+commit 6a3f8410304e6835c2bbd1382b1d167badfca59e
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Fri Feb 27 16:11:50 2026 +0530
+
+    Redesigned the homepage UI
+
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+M	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+
+commit 936e68e3f22581e6a3994905e363493e56ac84f1
+Merge: b966ca5 9f13208
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Fri Feb 27 00:42:09 2026 +0530
+
+    Merge pull request #16 from BinuraBimsara/feat/data-architecture
+    
+    Created folders for backend tasks
+
+commit 9f132083bd58375186c256f853f2f528203475bb
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Fri Feb 27 00:40:44 2026 +0530
+
+    Added text files to empty folders
+
+A	backend/lib/api_and_notifications/temp.txt
+A	backend/lib/api_handling/temp.txt
+A	backend/lib/auth_user_management/temp.txt
+A	backend/lib/data_architecture/temp.txt
+A	backend/lib/gov_dashboard/temp.txt
+A	backend/lib/report_function/temp.txt
+
+commit 84dd71bb3d2484c3b7baa3b3fb2f4080596bdb04
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Fri Feb 27 00:31:08 2026 +0530
+
+    Created folders for backend tasks
+
+A	backend/.dart_tool/extension_discovery/vs_code.json
+R100	backend/lib/google_maps_api.dart	backend/lib/data_architecture/google_maps_api.dart
+R100	backend/seed_data.dart	backend/lib/data_architecture/seed_data.dart
+M	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+
+commit de4bff10e2d76bfb6ecf3ae93f05f5b476f500ef
+Merge: ccbf53c 1b0286c
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Thu Feb 26 00:21:00 2026 +0530
+
+    Merge pull request #12 from BinuraBimsara/feat/data-architecture
+    
+    Added Geolocation filtering
+
+commit 1b0286c111d044ada4e41127c9462d726e2a3531
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Thu Feb 26 00:09:08 2026 +0530
+
+    Added Geolocation filtering
+
+A	backend/.dart_tool/package_config.json
+A	backend/.dart_tool/package_graph.json
+A	backend/.dart_tool/version
+A	backend/.flutter-plugins-dependencies
+A	backend/lib/google_maps_api.dart
+A	backend/pubspec.lock
+A	backend/pubspec.yaml
+M	frontend/lib/features/complaints/data/dummy_complaints.dart
+M	frontend/lib/features/complaints/data/models/complaint_model.dart
+M	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+M	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+M	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+M	frontend/pubspec.lock
+M	frontend/pubspec.yaml
+
+commit 802bbfc3d0e29a12f662ab7169dea1981a6d680b
+Merge: e1beaf4 713653e
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Wed Feb 25 12:13:53 2026 +0530
+
+    Merge pull request #7 from BinuraBimsara/develop
+    
+    Develop
+
+commit 713653e9fe40300e15e1bbb5eda05db1b11cb5eb
+Merge: bac18aa e1beaf4
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Wed Feb 25 11:53:26 2026 +0530
+
+    Report button changes
+
+commit 3d46799efd2115f03b31bb39a3213f489e5aa47d
+Merge: 9f3ec04 a5f52c5
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Tue Feb 24 01:24:25 2026 +0530
+
+    Merge pull request #3 from BinuraBimsara/feat/data-architecture
+    
+    First Commit
+
+commit a5f52c58aa24369b3f5368791327217ace187ca5
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Tue Feb 24 01:22:25 2026 +0530
+
+    First Commit
+
+M	frontend/lib/features/auth/presentation/pages/login_page.dart
+M	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+M	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+M	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+M	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+M	frontend/lib/features/profile/presentation/pages/profile_page.dart
+
+commit 73b62045bb046e6bc8a1a7e3b9088bc5bd238e11
+Author: BinuraBimsara <binurabimsara04@gmail.com>
+Date:   Tue Feb 24 00:46:27 2026 +0530
+
+    Initial Commit
+
+A	.gitignore
+M	README.md
+A	backend/README.md
+A	backend/functions/index.js
+A	backend/functions/package.json
+A	backend/seed_data.dart
+A	firebase.json
+A	frontend/.gitignore
+A	frontend/.metadata
+A	frontend/README.md
+A	frontend/analysis_options.yaml
+A	frontend/analyze_out.txt
+A	frontend/android/.gitignore
+A	frontend/android/app/build.gradle.kts
+A	frontend/android/app/google-services.json
+A	frontend/android/app/src/debug/AndroidManifest.xml
+A	frontend/android/app/src/main/AndroidManifest.xml
+A	frontend/android/app/src/main/kotlin/com/example/spotit/MainActivity.kt
+A	frontend/android/app/src/main/res/drawable-v21/launch_background.xml
+A	frontend/android/app/src/main/res/drawable/launch_background.xml
+A	frontend/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+A	frontend/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+A	frontend/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+A	frontend/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+A	frontend/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+A	frontend/android/app/src/main/res/values-night/styles.xml
+A	frontend/android/app/src/main/res/values/styles.xml
+A	frontend/android/app/src/profile/AndroidManifest.xml
+A	frontend/android/build.gradle.kts
+A	frontend/android/gradle.properties
+A	frontend/android/gradle/wrapper/gradle-wrapper.properties
+A	frontend/android/settings.gradle.kts
+A	frontend/ios/.gitignore
+A	frontend/ios/Flutter/AppFrameworkInfo.plist
+A	frontend/ios/Flutter/Debug.xcconfig
+A	frontend/ios/Flutter/Release.xcconfig
+A	frontend/ios/Runner.xcodeproj/project.pbxproj
+A	frontend/ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+A	frontend/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+A	frontend/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+A	frontend/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+A	frontend/ios/Runner.xcworkspace/contents.xcworkspacedata
+A	frontend/ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+A	frontend/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+A	frontend/ios/Runner/AppDelegate.swift
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png
+A	frontend/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png
+A	frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json
+A	frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+A	frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+A	frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+A	frontend/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md
+A	frontend/ios/Runner/Base.lproj/LaunchScreen.storyboard
+A	frontend/ios/Runner/Base.lproj/Main.storyboard
+A	frontend/ios/Runner/Info.plist
+A	frontend/ios/Runner/Runner-Bridging-Header.h
+A	frontend/ios/Runner/SceneDelegate.swift
+A	frontend/ios/RunnerTests/RunnerTests.swift
+A	frontend/lib/core/services/location_service.dart
+A	frontend/lib/features/auth/data/services/auth_service.dart
+A	frontend/lib/features/auth/presentation/pages/login_page.dart
+A	frontend/lib/features/auth/presentation/pages/signup_dialog.dart
+A	frontend/lib/features/complaints/data/dummy_complaints.dart
+A	frontend/lib/features/complaints/data/models/complaint_model.dart
+A	frontend/lib/features/complaints/data/repositories/complaint_repository.dart
+A	frontend/lib/features/complaints/data/repositories/dummy_complaint_repository.dart
+A	frontend/lib/features/complaints/data/repositories/firestore_complaint_repository.dart
+A	frontend/lib/features/complaints/domain/repositories/complaint_repository.dart
+A	frontend/lib/features/dashboard/presentation/pages/my_reports_page.dart
+A	frontend/lib/features/home/presentation/pages/complaint_detail_page.dart
+A	frontend/lib/features/home/presentation/pages/home_controller_page.dart
+A	frontend/lib/features/home/presentation/pages/home_feed_page.dart
+A	frontend/lib/features/home/presentation/widgets/complaint_card.dart
+A	frontend/lib/features/notifications/presentation/pages/notifications_page.dart
+A	frontend/lib/features/profile/presentation/pages/profile_page.dart
+A	frontend/lib/firebase_options.dart
+A	frontend/lib/main.dart
+A	frontend/linux/.gitignore
+A	frontend/linux/CMakeLists.txt
+A	frontend/linux/flutter/CMakeLists.txt
+A	frontend/linux/flutter/generated_plugin_registrant.cc
+A	frontend/linux/flutter/generated_plugin_registrant.h
+A	frontend/linux/flutter/generated_plugins.cmake
+A	frontend/linux/runner/CMakeLists.txt
+A	frontend/linux/runner/main.cc
+A	frontend/linux/runner/my_application.cc
+A	frontend/linux/runner/my_application.h
+A	frontend/macos/.gitignore
+A	frontend/macos/Flutter/Flutter-Debug.xcconfig
+A	frontend/macos/Flutter/Flutter-Release.xcconfig
+A	frontend/macos/Flutter/GeneratedPluginRegistrant.swift
+A	frontend/macos/Runner.xcodeproj/project.pbxproj
+A	frontend/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+A	frontend/macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+A	frontend/macos/Runner.xcworkspace/contents.xcworkspacedata
+A	frontend/macos/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+A	frontend/macos/Runner/AppDelegate.swift
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png
+A	frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png
+A	frontend/macos/Runner/Base.lproj/MainMenu.xib
+A	frontend/macos/Runner/Configs/AppInfo.xcconfig
+A	frontend/macos/Runner/Configs/Debug.xcconfig
+A	frontend/macos/Runner/Configs/Release.xcconfig
+A	frontend/macos/Runner/Configs/Warnings.xcconfig
+A	frontend/macos/Runner/DebugProfile.entitlements
+A	frontend/macos/Runner/Info.plist
+A	frontend/macos/Runner/MainFlutterWindow.swift
+A	frontend/macos/Runner/Release.entitlements
+A	frontend/macos/RunnerTests/RunnerTests.swift
+A	frontend/pubspec.lock
+A	frontend/pubspec.yaml
+A	frontend/test/widget_test.dart
+A	frontend/web/favicon.png
+A	frontend/web/icons/Icon-192.png
+A	frontend/web/icons/Icon-512.png
+A	frontend/web/icons/Icon-maskable-192.png
+A	frontend/web/icons/Icon-maskable-512.png
+A	frontend/web/index.html
+A	frontend/web/manifest.json
+A	frontend/windows/.gitignore
+A	frontend/windows/CMakeLists.txt
+A	frontend/windows/flutter/CMakeLists.txt
+A	frontend/windows/flutter/generated_plugin_registrant.cc
+A	frontend/windows/flutter/generated_plugin_registrant.h
+A	frontend/windows/flutter/generated_plugins.cmake
+A	frontend/windows/runner/CMakeLists.txt
+A	frontend/windows/runner/Runner.rc
+A	frontend/windows/runner/flutter_window.cpp
+A	frontend/windows/runner/flutter_window.h
+A	frontend/windows/runner/main.cpp
+A	frontend/windows/runner/resource.h
+A	frontend/windows/runner/resources/app_icon.ico
+A	frontend/windows/runner/runner.exe.manifest
+A	frontend/windows/runner/utils.cpp
+A	frontend/windows/runner/utils.h
+A	frontend/windows/runner/win32_window.cpp
+A	frontend/windows/runner/win32_window.h
+
+commit e0f6369e64685762c716ef0fd1791429c6ae5432
+Author: Binura Narayana <Binurabimsara04@gmail.com>
+Date:   Sat Feb 21 22:54:41 2026 +0530
+
+    Initial commit
+
+A	README.md
