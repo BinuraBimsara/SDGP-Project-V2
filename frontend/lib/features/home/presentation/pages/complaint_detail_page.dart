@@ -1029,7 +1029,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
               ),
             ),
 
-            if (_isOfficial)
+            if (_isOfficial && !_complaint.isAnonymous)
               Container(
                 width: double.infinity,
                 color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
