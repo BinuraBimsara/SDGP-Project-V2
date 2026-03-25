@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/gov_dashboard/presentation/widgets/gov_report_card.dart';
 import 'package:spotit/features/home/presentation/pages/complaint_detail_page.dart';
+import 'package:spotit/features/chat/data/repositories/firestore_chat_repository.dart';
 import 'package:spotit/main.dart';
 
 /// Sort modes for report listing.
@@ -226,9 +227,12 @@ class _GovCategoryReportsPageState extends State<GovCategoryReportsPage> {
                                   MaterialPageRoute(
                                     builder: (_) => RepositoryProvider(
                                       repository: RepositoryProvider.of(context),
-                                      child: ComplaintDetailPage(
-                                        complaint: _complaints[index],
-                                        isOfficial: true,
+                                      child: ChatRepositoryProvider(
+                                        chatRepository: FirestoreChatRepository(),
+                                        child: ComplaintDetailPage(
+                                          complaint: _complaints[index],
+                                          isOfficial: true,
+                                        ),
                                       ),
                                     ),
                                   ),
