@@ -19,6 +19,7 @@ class Complaint {
   final double? latitude;
   final double? longitude;
   final bool isUpvoted;
+  final bool isAnonymous;
 
   /// List of user UIDs who have upvoted this complaint.
   final List<String> upvotedBy;
@@ -45,6 +46,7 @@ class Complaint {
     this.isUpvoted = false,
     this.upvotedBy = const [],
     this.distanceInMeters,
+    this.isAnonymous = false,
   });
 
   /// Create a Complaint from a Firestore document snapshot.
@@ -106,6 +108,7 @@ class Complaint {
       longitude: parsedLongitude,
       isUpvoted: hasUpvoted,
       upvotedBy: voters,
+      isAnonymous: data['isAnonymous'] as bool? ?? false,
     );
   }
 
@@ -126,6 +129,7 @@ class Complaint {
       'locationName': locationName,
       'latitude': latitude,
       'longitude': longitude,
+      'isAnonymous': isAnonymous,
     };
   }
 
@@ -148,6 +152,7 @@ class Complaint {
     bool? isUpvoted,
     List<String>? upvotedBy,
     double? distanceInMeters,
+    bool? isAnonymous,
   }) {
     return Complaint(
       id: id ?? this.id,
@@ -168,6 +173,7 @@ class Complaint {
       isUpvoted: isUpvoted ?? this.isUpvoted,
       upvotedBy: upvotedBy ?? this.upvotedBy,
       distanceInMeters: distanceInMeters ?? this.distanceInMeters,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 
@@ -191,6 +197,7 @@ class Complaint {
       'longitude': longitude,
       'isUpvoted': isUpvoted,
       'upvotedBy': upvotedBy,
+      'isAnonymous': isAnonymous,
     };
   }
 
