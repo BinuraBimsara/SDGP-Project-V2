@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SpotIT Cloud Functions
  *
  * Firebase Cloud Functions for the SpotIT civic-reporting platform.
@@ -243,6 +243,45 @@ exports.onComplaintCreated = onDocumentCreated(
       }
 
       logger.info(`Complaint ${complaintId} created successfully`);
+
+      // ── Notify all government officials about the new complaint ──
+      try {
+        const officialsSnap = await db.collection("users")
+            .where("role", "==", "government").get();
+
+        const authorName = data.isAnonymous ?
+          "Anonymous Citizen" :
+          (data.authorName || "A citizen");
+
+        const notifPromises = [];
+        officialsSnap.forEach((officialDoc) => {
+          const officialUid = officialDoc.id;
+          // Don't notify the author if they happen to be an official
+          if (officialUid === data.authorId) return;
+          notifPromises.push(
+              sendNotification(
+                  officialUid,
+                  "New Complaint Reported",
+                  `${authorName} reported: "${data.title}"`,
+                  {
+                    complaintId,
+                    type: "new_complaint",
+                    category: data.category || "",
+                  },
+              ),
+          );
+        });
+        await Promise.all(notifPromises);
+        logger.info(
+            `Notified ${notifPromises.length} officials ` +
+          `about complaint ${complaintId}`,
+        );
+      } catch (err) {
+        logger.warn(
+            `Failed to notify officials for ${complaintId}`,
+            err,
+        );
+      }
     },
 );
 
@@ -586,4 +625,65 @@ exports.setUserRole = onCall(async (request) => {
   };
 });
 
+// -- Chat message notification trigger ----------------------------------------
+// When a new message is added to a chat, notify the other party.
+exports.onChatMessageCreated = onDocumentCreated(
+    "chats/{chatId}/messages/{messageId}",
+    async (event) => {
+      const snap = event.data;
+      if (!snap) return;
+
+      const messageData = snap.data();
+      const chatId = event.params.chatId;
+      const senderId = messageData.senderId || "";
+
+      // Read the parent chat session to find participants
+      const chatDoc = await db.collection("chats").doc(chatId).get();
+      if (!chatDoc.exists) {
+        logger.warn(`Chat ${chatId} not found for message notification`);
+        return;
+      }
+
+      const chat = chatDoc.data();
+      const officialId = chat.officialId || "";
+      const citizenId = chat.citizenId || "";
+
+      // Determine who to notify (the other party)
+      let recipientId = "";
+      let senderLabel = "";
+      if (senderId === officialId) {
+        recipientId = citizenId;
+        senderLabel = chat.officialName || "Government Official";
+      } else if (senderId === citizenId) {
+        recipientId = officialId;
+        senderLabel = chat.citizenName || "Citizen";
+      } else {
+        logger.warn(`Unknown sender ${senderId} in chat ${chatId}`);
+        return;
+      }
+
+      if (!recipientId) {
+        logger.info(`No recipient to notify for chat ${chatId}`);
+        return;
+      }
+
+      const messageText = (messageData.text || "").substring(0, 100);
+
+      await sendNotification(
+          recipientId,
+          `Message from ${senderLabel}`,
+          messageText || "Sent a message",
+          {
+            chatId,
+            complaintId: chat.complaintId || "",
+            type: "chat_message",
+          },
+      );
+
+      logger.info(
+          `Chat notification sent: ${senderId} -> ${recipientId} ` +
+        `in chat ${chatId}`,
+      );
+    },
+);
 

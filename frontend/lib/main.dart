@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotit/firebase_options.dart';
@@ -64,6 +66,126 @@ class ChatRepositoryProvider extends InheritedWidget {
 
 // ─── App Entry Point ─────────────────────────────────────────────────────────
 
+/// Local notifications plugin instance (for showing notifications in foreground).
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+/// Android notification channel for SpotIT.
+const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+  'spotit_notifications', // id
+  'SpotIT Notifications', // name
+  description: 'Notifications for SpotIT',
+  importance: Importance.high,
+);
+
+/// Handle background FCM messages (required by firebase_messaging).
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint('Background message: ${message.messageId}');
+}
+
+/// Initialize local notifications plugin.
+Future<void> _initLocalNotifications() async {
+  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const initSettings = InitializationSettings(android: androidSettings);
+  await _localNotifications.initialize(initSettings);
+
+  // Create the notification channel on Android
+  final androidPlugin =
+      _localNotifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+  await androidPlugin?.createNotificationChannel(_channel);
+}
+
+/// Show a notification in the system notification bar.
+void _showLocalNotification(RemoteMessage message) {
+  final notification = message.notification;
+  if (notification == null) return;
+
+  _localNotifications.show(
+    notification.hashCode,
+    notification.title,
+    notification.body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channel.id,
+        _channel.name,
+        channelDescription: _channel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      ),
+    ),
+  );
+}
+
+/// Request notification permission and save FCM token to Firestore.
+Future<void> _initFCM() async {
+  final messaging = FirebaseMessaging.instance;
+
+  // Request permission (required for Android 13+ and iOS)
+  final settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+    provisional: false,
+  );
+  debugPrint('FCM permission: ${settings.authorizationStatus}');
+
+  if (settings.authorizationStatus == AuthorizationStatus.denied) {
+    debugPrint('Notification permission denied by user');
+    return;
+  }
+
+  // Register background handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize local notifications for foreground display
+  await _initLocalNotifications();
+
+  // Show notification in system tray when app is in foreground
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint('Foreground message: ${message.notification?.title}');
+    _showLocalNotification(message);
+  });
+
+  // Get and save FCM token
+  await _saveFcmToken(messaging);
+
+  // Listen for token refreshes
+  messaging.onTokenRefresh.listen((newToken) async {
+    await _updateFcmTokenInFirestore(newToken);
+  });
+}
+
+/// Retrieve FCM token and save it to the current user's Firestore document.
+Future<void> _saveFcmToken(FirebaseMessaging messaging) async {
+  try {
+    final token = await messaging.getToken();
+    if (token != null) {
+      await _updateFcmTokenInFirestore(token);
+    }
+  } catch (e) {
+    debugPrint('Error getting FCM token: $e');
+  }
+}
+
+/// Write the FCM token to the user's Firestore document.
+Future<void> _updateFcmTokenInFirestore(String token) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .update({'fcmToken': token});
+    debugPrint('FCM token saved for ${user.uid}');
+  } catch (e) {
+    debugPrint('Error saving FCM token: $e');
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -99,6 +221,9 @@ Future<void> main() async {
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
+
+  // ── FCM: Request notification permission & save token ──
+  await _initFCM();
   runApp(
     RepositoryProvider(
       repository: FirestoreComplaintRepository(),

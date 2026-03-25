@@ -264,9 +264,11 @@ class _GovReportCardState extends State<GovReportCard> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        complaint.authorName.isNotEmpty
-                            ? complaint.authorName
-                            : 'Anonymous',
+                        complaint.isAnonymous
+                            ? 'Anonymous Citizen'
+                            : complaint.authorName.isNotEmpty
+                                ? complaint.authorName
+                                : 'Anonymous',
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? Colors.white38 : Colors.black38,

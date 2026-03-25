@@ -163,6 +163,7 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
   bool _submitSuccess = false;
   String? _errorMessage;
   bool _isCategoryExpanded = false;
+  bool _isAnonymous = false;
 
   // ── Geotag state ──
   double? _latitude;
@@ -360,10 +361,13 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
         commentCount: 0,
         timestamp: DateTime.now(),
         authorId: user.uid,
-        authorName: user.displayName ?? user.email ?? 'Anonymous',
+        authorName: _isAnonymous
+            ? 'Anonymous Citizen'
+            : (user.displayName ?? user.email ?? 'Anonymous'),
         locationName: location,
         latitude: _latitude,
         longitude: _longitude,
+        isAnonymous: _isAnonymous,
       );
 
       final repo = RepositoryProvider.of(context);
@@ -534,6 +538,10 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
                   ),
                   const SizedBox(height: 24),
 
+                  // ── Anonymous Toggle ──
+                  _buildAnonymousToggle(),
+                  const SizedBox(height: 16),
+
                   // ── Animated Submit Button ──
                   _buildAnimatedSubmitButton(),
                 ],
@@ -634,6 +642,71 @@ class _ReportIssueModalState extends State<ReportIssueModal> {
           ),
         ),
         onPressed: _handleSubmit,
+      ),
+    );
+  }
+
+  // ── Anonymous Toggle ──
+  Widget _buildAnonymousToggle() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: () => setState(() => _isAnonymous = !_isAnonymous),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _isAnonymous
+              ? _accentGreen.withAlpha(25)
+              : _fieldFill(isDark),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isAnonymous
+                ? _accentGreen.withAlpha(100)
+                : _borderColor(isDark),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.visibility_off_outlined,
+              color: _isAnonymous ? _accentGreen : _hintColor(isDark),
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Submit Anonymously',
+                    style: TextStyle(
+                      color: _isAnonymous
+                          ? _accentGreen
+                          : _textPrimary(isDark),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Your identity will be hidden from officials',
+                    style: TextStyle(
+                      color: _isAnonymous
+                          ? _accentGreen.withAlpha(160)
+                          : _textSecondary(isDark),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch.adaptive(
+              value: _isAnonymous,
+              onChanged: (val) => setState(() => _isAnonymous = val),
+              activeColor: _accentGreen,
+            ),
+          ],
+        ),
       ),
     );
   }

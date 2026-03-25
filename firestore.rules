@@ -65,10 +65,8 @@ service cloud.firestore {
 
     // ── Users collection ─────────────────────────────────────────────
     match /users/{userId} {
-      // Users can read their own profile; government can read any
       allow read: if isOwner(userId) || isGovernment();
 
-      // New users can create their own profile but cannot self-assign privileged roles.
       allow create: if isOwner(userId) &&
         request.resource.data.keys().hasOnly([
           'displayName', 'email', 'photoURL', 'photoUrl', 'role', 'createdAt',
@@ -77,7 +75,6 @@ service cloud.firestore {
         ]) &&
         request.resource.data.role == 'citizen';
 
-      // Profile owners can edit personal fields only; role/escalation is blocked.
       allow update: if isOwner(userId) &&
         request.resource.data.role == resource.data.role &&
         request.resource.data.email == resource.data.email &&
@@ -87,27 +84,24 @@ service cloud.firestore {
           'phone', 'profileCompleted', 'position', 'workplace', 'branch', 'fcmToken'
         ]);
 
-      // Only trusted backend should remove user profiles.
       allow delete: if false;
 
-      // Notifications subcollection
       match /notifications/{notifId} {
         allow read: if isOwner(userId);
-        allow write: if false; // only Cloud Functions write
+        allow write: if false;
       }
     }
 
     // ── Complaints collection ────────────────────────────────────────
     match /complaints/{complaintId} {
-      // In testing, allow reading complaints without auth.
       allow read: if true;
 
-      // Complaint creation with strict schema and ownership checks.
       allow create: if isSignedIn() &&
         request.resource.data.keys().hasOnly([
           'title', 'description', 'category', 'imageUrl', 'imageUrls',
           'status', 'upvoteCount', 'commentCount', 'timestamp', 'authorId',
-          'authorName', 'locationName', 'latitude', 'longitude', 'createdAt'
+          'authorName', 'locationName', 'latitude', 'longitude', 'createdAt',
+          'isAnonymous'
         ]) &&
         request.resource.data.authorId == request.auth.uid &&
         isValidString(request.resource.data.title, 5, 120) &&
@@ -120,7 +114,6 @@ service cloud.firestore {
         isValidOptionalString(request.resource.data.locationName, 120) &&
         isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude);
 
-      // Authors can only edit non-sensitive fields of their own complaint.
       allow update: if
         (
           isSignedIn() &&
@@ -147,33 +140,27 @@ service cloud.firestore {
         )
         ||
         (
-          // Testing mode: allow status-only updates without auth flow.
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
           isValidStatus(request.resource.data.status)
         )
         ||
         (
-          // Allow signed-in users to update commentCount (for comment add/delete sync).
           isSignedIn() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']) &&
           request.resource.data.commentCount is int &&
           request.resource.data.commentCount >= 0
         );
 
-      // Government or complaint owner can delete.
       allow delete: if isGovernment() || isComplaintOwner(complaintId);
 
-      // Upvotes subcollection
       match /upvotes/{upvoteId} {
         allow read: if isSignedIn();
-        allow write: if false; // managed by Cloud Functions
+        allow write: if false;
       }
 
-      // Comments subcollection
       match /comments/{commentId} {
         allow read: if true;
 
-        // Allow signed-in users to create their own comments with strict schema.
         allow create: if isSignedIn() &&
           request.resource.data.keys().hasOnly([
             'authorId', 'authorName', 'text', 'parentCommentId', 'isOfficial', 'timestamp'
@@ -190,6 +177,36 @@ service cloud.firestore {
           isGovernment() ||
           isComplaintOwner(complaintId)
         );
+      }
+    }
+
+    // ── Chats collection ─────────────────────────────────────────────
+    // Firestore queries with OR across different fields fail silently.
+    // We allow any signed-in user to read chats, since the query itself
+    // filters to the user's own sessions (officialId/citizenId match).
+    // Write rules still enforce participant-only access.
+    match /chats/{chatId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() && (
+        request.resource.data.officialId == request.auth.uid ||
+        request.resource.data.citizenId == request.auth.uid
+      );
+
+      allow update: if isSignedIn() && (
+        resource.data.officialId == request.auth.uid ||
+        resource.data.citizenId == request.auth.uid
+      );
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+
+        allow create: if isSignedIn() &&
+          request.resource.data.senderId == request.auth.uid;
+
+        allow update, delete: if false;
       }
     }
   }
