@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:math' as math; // used for the Haversine distance formula
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,33 +9,38 @@ import 'package:spotit/features/complaints/data/models/complaint_model.dart';
 import 'package:spotit/features/complaints/domain/repositories/complaint_repository.dart';
 import 'package:spotit/core/services/storage_service.dart';
 
-/// Firestore-backed implementation of [ComplaintRepository].
-///
-/// Reads and writes complaints from/to the live Firestore `complaints`
-/// collection. Upvote and comment mutations are delegated to callable
-/// Cloud Functions to keep counters server-authoritative.
+// This class implements the ComplaintRepository interface using Firestore.
+// All database reads and writes for complaints go through this class.
+// Upvotes and comments are handled by Cloud Functions to keep counts accurate
+// even under concurrent access (multiple users hitting upvote at the same time).
 class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Cloud Functions are called with a region because our functions are deployed
+  // in asia-south1 (Mumbai), not the default us-central1
   final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
     region: 'asia-south1',
   );
-  final StorageService _storageService = StorageService();
 
+  final StorageService _storageService = StorageService(); // handles image uploads
+
+  // Returns the category string unchanged.
+  // Firestore security rules do case-sensitive checks, so we must not alter case.
   String _normalizeCategory(String category) {
-    // Return category as-is to match Firestore rules (case-sensitive)
     return category;
   }
 
-  /// Case-insensitive category matching for filtering
+  // Compares two category strings case-insensitively.
+  // Used for client-side filtering after we fetch all complaints.
   bool _categoryMatches(String complaintCategory, String selectedCategory) {
     return complaintCategory.toLowerCase() == selectedCategory.toLowerCase();
   }
 
-  /// Reference to the top-level complaints collection.
+  // Shortcut property to the Firestore 'complaints' collection
   CollectionReference<Map<String, dynamic>> get _complaintsRef =>
       _firestore.collection('complaints');
 
-  // ── Read operations ──────────────────────────────────────────────────────
+  // ── Read operations ──────────────────────────────────────────────────────────
 
   @override
   Future<List<Complaint>> getComplaints({
@@ -43,24 +48,27 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     double? userLat,
     double? userLng,
   }) async {
-    // Fetch all complaints without orderBy so legacy docs without timestamp
-    // are also included.
+    // Fetch ALL complaints without a server-side orderBy.
+    // Why? Some older documents don't have a 'timestamp' field, and Firestore
+    // would exclude them if we used orderBy('timestamp'). We sort client-side instead.
     final snapshot = await _complaintsRef.get();
 
+    // Convert each Firestore document to a Complaint object
     List<Complaint> complaints =
         snapshot.docs.map((doc) => Complaint.fromFirestore(doc)).toList();
 
-    // Apply category filter client-side to avoid needing a composite index
+    // Filter by category on the client side to avoid needing a composite Firestore index
     if (category != null && category.isNotEmpty) {
       complaints = complaints
           .where((c) => _categoryMatches(c.category, category))
           .toList();
     }
 
-    // Default sort for non-distance views: latest first.
+    // Default sort: newest complaints at the top
     complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    // Calculate distance from user and sort closest-first
+    // If the user's GPS coordinates are provided, calculate how far each complaint
+    // is from them and then sort by distance (closest first)
     if (userLat != null && userLng != null) {
       complaints = complaints.map((c) {
         if (c.latitude != null && c.longitude != null) {
@@ -70,11 +78,12 @@ class FirestoreComplaintRepository implements ComplaintRepository {
             c.latitude!,
             c.longitude!,
           );
-          return c.copyWith(distanceInMeters: meters);
+          return c.copyWith(distanceInMeters: meters); // attach the calculated distance
         }
-        return c.copyWith(distanceInMeters: double.maxFinite);
+        return c.copyWith(distanceInMeters: double.maxFinite); // no GPS = put at the end
       }).toList();
 
+      // Sort so the closest complaint is first
       complaints.sort((a, b) {
         final dA = a.distanceInMeters ?? double.maxFinite;
         final dB = b.distanceInMeters ?? double.maxFinite;
@@ -85,7 +94,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     return complaints;
   }
 
-  /// Haversine formula — returns straight-line distance in meters.
+  // Calculates the straight-line distance between two GPS coordinates in meters.
+  // Uses the Haversine formula which accounts for the curvature of the Earth.
+  // p = pi / 180 converts degrees to radians (GPS coordinates are in degrees).
   static double _haversineMeters(
     double lat1,
     double lon1,
@@ -99,22 +110,24 @@ class FirestoreComplaintRepository implements ComplaintRepository {
             math.cos(lat2 * p) *
             (1 - math.cos((lon2 - lon1) * p)) /
             2;
-    return 12742000 * math.asin(math.sqrt(a)); // 2 * R in meters
+    return 12742000 * math.asin(math.sqrt(a)); // 2 * Earth's radius in meters
   }
 
   @override
   Future<Complaint?> getComplaintById(String id) async {
     final doc = await _complaintsRef.doc(id).get();
-    if (!doc.exists) return null;
+    if (!doc.exists) return null; // return null instead of throwing if not found
     return Complaint.fromFirestore(doc);
   }
 
-  // ── Write operations ─────────────────────────────────────────────────────
+  // ── Write operations ─────────────────────────────────────────────────────────
 
   @override
   Future<Complaint> createComplaint(Complaint complaint,
       {List<XFile>? images}) async {
-    // Use a schema-compatible payload for Firestore rules.
+    // Build the exact payload that Firestore security rules allow.
+    // The rules check that only these fields are present, so we can't
+    // include extra fields like 'isAnonymous' unless the rules allow it.
     final createPayload = <String, dynamic>{
       'title': complaint.title,
       'description': complaint.description,
@@ -132,25 +145,27 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       'longitude': complaint.longitude,
     };
 
-    // 1. Create the complaint document first (to get the ID)
+    // Step 1: Create the complaint document first to get its Firestore ID.
+    // We need the ID before we can upload images (the images go in a subfolder named after the ID).
     final docRef = await _complaintsRef.add(createPayload);
 
-    // 2. Upload images if provided
+    // Step 2: Upload images to Firebase Storage if any were attached
     List<String> imageUrls = [];
     if (images != null && images.isNotEmpty) {
       imageUrls = await _storageService.uploadMultipleImages(
-        docRef.id,
+        docRef.id,  // use the just-created complaint ID as the storage folder name
         images,
       );
 
-      // 3. Update the complaint doc with the image URLs
+      // Step 3: Update the complaint document with the image URLs
+      // (we couldn't include them in the original write because we needed the ID first)
       await docRef.update({
-        'imageUrl': imageUrls.first,
-        'imageUrls': imageUrls,
+        'imageUrl': imageUrls.first, // primary image for quick display
+        'imageUrls': imageUrls,      // full list for the image gallery
       });
     }
 
-    // 4. Re-fetch and return the final complaint
+    // Step 4: Re-fetch the complaint to return the final version with all fields
     final snap = await docRef.get();
     return Complaint.fromFirestore(snap);
   }
@@ -160,9 +175,12 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
+    // Call the Cloud Function — it runs a Firestore transaction so the count
+    // is always accurate even if two users upvote at exactly the same moment
     final callable = _functions.httpsCallable('toggleUpvote');
     await callable.call({'complaintId': complaintId});
 
+    // Re-fetch and return the complaint with the updated upvoteCount
     final docRef = _complaintsRef.doc(complaintId);
     return Complaint.fromFirestore(await docRef.get());
   }
@@ -173,25 +191,29 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String author,
     String text, {
     required String authorId,
-    String? parentCommentId,
+    String? parentCommentId, // null for top-level comments; set for replies
     bool isOfficial = false,
   }) async {
     final callable = _functions.httpsCallable('addComment');
     try {
+      // Try to call the Cloud Function first — it handles everything atomically
       await callable.call({
         'complaintId': complaintId,
         'text': text,
         'parentCommentId': parentCommentId,
       });
 
-      // Force server fetch to get updated commentCount after Cloud Function increment
+      // Force a server fetch to get the updated commentCount after the Cloud Function ran.
+      // Source.server bypasses Firestore's local cache to always get the latest number.
       final updatedDoc = await _complaintsRef
           .doc(complaintId)
           .get(const GetOptions(source: Source.server));
       final data = updatedDoc.data();
       return (data?['commentCount'] as num?)?.toInt() ?? 0;
+
     } on FirebaseFunctionsException {
-      // Fallback path: write the comment directly when callable fails.
+      // If the Cloud Function fails (e.g. permission error), fall back to
+      // writing the comment directly to Firestore
       await _complaintsRef.doc(complaintId).collection('comments').add({
         'authorId': authorId,
         'authorName': author,
@@ -201,15 +223,16 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // Increment commentCount on the complaint document
+      // Try to increment the comment count on the complaint document
       try {
         await _complaintsRef.doc(complaintId).update({
-          'commentCount': FieldValue.increment(1),
+          'commentCount': FieldValue.increment(1), // atomic increment
         });
       } catch (_) {
-        // Ignore if rules prevent count update; UI will use local count
+        // If the increment fails (security rules), the UI will use the local count
       }
 
+      // Count the actual comments in Firestore as a fallback count
       final commentsSnapshot =
           await _complaintsRef.doc(complaintId).collection('comments').get();
       return commentsSnapshot.docs.length;
@@ -221,19 +244,22 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final snapshot = await _complaintsRef
         .doc(complaintId)
         .collection('comments')
-        .orderBy('timestamp', descending: false)
+        .orderBy('timestamp', descending: false) // oldest comment first
         .get();
 
+    // Convert each comment document to a normalized Map.
+    // We normalize field names here so the UI doesn't need to handle
+    // two different field name conventions ('authorName' vs 'author').
     return snapshot.docs.map((doc) {
       final data = doc.data();
       return {
         'id': doc.id,
         'author': data['authorName'] as String? ??
             data['author'] as String? ??
-            'Anonymous',
+            'Anonymous', // try both field names for backwards compatibility
         'authorId': data['authorId'] as String? ?? '',
         'text': data['text'] as String? ?? '',
-        'parentCommentId': data['parentCommentId'] as String?,
+        'parentCommentId': data['parentCommentId'] as String?, // null = top-level
         'isOfficial': data['isOfficial'] as bool? ?? false,
         'timestamp': data['timestamp'] is Timestamp
             ? (data['timestamp'] as Timestamp).toDate()
@@ -247,37 +273,37 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final docRef = _complaintsRef.doc(complaintId);
     final commentsCol = docRef.collection('comments');
 
-    // 1. Recursively collect this comment and all nested replies
+    // Collect the ID of this comment and all nested replies recursively.
+    // We need to delete all of them, not just the top-level one.
     final idsToDelete = <String>[commentId];
     Future<void> collectReplies(String parentId) async {
       final replies =
           await commentsCol.where('parentCommentId', isEqualTo: parentId).get();
       for (final reply in replies.docs) {
-        idsToDelete.add(reply.id);
-        await collectReplies(reply.id);
+        idsToDelete.add(reply.id); // add this reply to the delete list
+        await collectReplies(reply.id); // and recurse to find its replies too
       }
     }
-
     await collectReplies(commentId);
 
-    // 2. Delete all collected comments
+    // Delete all collected comments (the original + all nested replies)
     for (final id in idsToDelete) {
       await commentsCol.doc(id).delete();
     }
 
-    // 3. Decrement commentCount by the number of deleted comments
+    // Subtract the deleted count from the total commentCount on the complaint
     try {
       await docRef.update({
         'commentCount': FieldValue.increment(-idsToDelete.length),
       });
     } catch (_) {
-      // Best-effort count sync; UI will refresh from subcollection count
+      // Best-effort sync — if it fails, the UI will refresh on next load
     }
   }
 
   @override
   Future<void> syncCommentCount(String complaintId, int count) async {
-    // Ensure user is authenticated before attempting update
+    // Only run if a user is logged in — Firestore rules require authentication
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       debugPrint('syncCommentCount: User not authenticated');
@@ -285,6 +311,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     }
 
     try {
+      // Overwrite the commentCount with the correct number
       await _complaintsRef.doc(complaintId).update({
         'commentCount': count,
       });
@@ -298,10 +325,12 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
   @override
   Future<Complaint> updateStatus(String complaintId, String newStatus) async {
+    // Update only the status field — leave everything else untouched
     await _complaintsRef.doc(complaintId).update({
-      'status': newStatus,
+      'status': newStatus, // e.g. 'Pending' → 'In Progress'
     });
 
+    // Re-fetch and return the updated complaint so the UI can refresh
     final doc = await _complaintsRef.doc(complaintId).get();
     return Complaint.fromFirestore(doc);
   }
@@ -310,13 +339,15 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   Future<void> deleteComplaint(String complaintId) async {
     final docRef = _complaintsRef.doc(complaintId);
 
-    // 1. Delete all comments in the subcollection
+    // Step 1: Delete all comments in the subcollection.
+    // Firestore doesn't automatically delete subcollections when you delete a document,
+    // so we have to do it manually first.
     final commentsSnapshot = await docRef.collection('comments').get();
     for (final commentDoc in commentsSnapshot.docs) {
       await commentDoc.reference.delete();
     }
 
-    // 2. Delete the complaint document itself
+    // Step 2: Delete the complaint document itself
     await docRef.delete();
   }
 }
