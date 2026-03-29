@@ -1,27 +1,41 @@
 rules_version = '2';
 
+// Firestore Security Rules — controls who can read and write each collection.
+// These rules run on Google's servers for every database request.
+// If the code reaches no matching 'allow' rule, the request is denied.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper functions ─────────────────────────────────────────────
+    // ── Helper functions ──────────────────────────────────────────────────────
+    // These functions are reused across multiple rules to keep things readable.
+
+    // True if the user is logged in at all
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // True if the logged-in user's UID matches the given uid
+    // Used to prevent users from reading or writing each other's data
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    // True if the authorId field hasn't changed during an update.
+    // Prevents a user from "reassigning" a complaint to a different author.
     function isSelfUnchanged(uid) {
       return resource.data.authorId == uid && request.resource.data.authorId == uid;
     }
 
+    // Reads the 'role' field from the current user's profile in Firestore.
+    // This is used by isGovernment() to check the user's role.
     function getUserRole() {
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
       ).data.role;
     }
 
+    // True if the logged-in user has a government or official role
     function isGovernment() {
       return isSignedIn() && (
         getUserRole() == 'government' ||
@@ -29,73 +43,100 @@ service cloud.firestore {
       );
     }
 
+    // True if the given status is one of our allowed values
     function isValidStatus(status) {
       return status in ['Pending', 'In Progress', 'Resolved'];
     }
 
+    // True if the given category is one of our allowed values
     function isValidCategory(category) {
       return category in [
         'Road', 'Road Damage', 'Infrastructure', 'Waste', 'Lighting', 'Other'
       ];
     }
 
+    // True if the logged-in user is the original author of a specific complaint.
+    // Used to let citizens delete their own complaints and comments.
     function isComplaintOwner(complaintId) {
       return isSignedIn() &&
         get(/databases/$(database)/documents/complaints/$(complaintId)).data.authorId == request.auth.uid;
     }
 
+    // Validates that a string field exists and is within the length limits
     function isValidString(value, min, max) {
       return value is string && value.size() >= min && value.size() <= max;
     }
 
+    // Validates an optional string — allows null (not provided) or a bounded string
     function isValidOptionalString(value, max) {
       return value == null || (value is string && value.size() <= max);
     }
 
+    // Validates GPS coordinates — both must be null, or both must be numbers in valid range
     function isValidGeoPoint(lat, lng) {
       return (
-        (lat == null && lng == null) ||
+        (lat == null && lng == null) || // both missing is fine (no location)
         (
           lat is number && lng is number &&
-          lat >= -90 && lat <= 90 &&
-          lng >= -180 && lng <= 180
+          lat >= -90 && lat <= 90 &&   // latitude range
+          lng >= -180 && lng <= 180    // longitude range
         )
       );
     }
 
-    // ── Users collection ─────────────────────────────────────────────
+    // ── Users collection ──────────────────────────────────────────────────────
+    // Each user has one document at users/{userId} containing their profile.
     match /users/{userId} {
+      // A user can read their own profile. Officials can read all profiles
+      // (e.g. to look up a citizen's name in a chat).
       allow read: if isOwner(userId) || isGovernment();
 
+      // A user can only create their own profile, and it must start as 'citizen'
+      // (role escalation to 'government' can only be done by Cloud Functions)
       allow create: if isOwner(userId) &&
         request.resource.data.keys().hasOnly([
           'displayName', 'email', 'photoURL', 'photoUrl', 'role', 'createdAt',
           'firstName', 'lastName', 'phone', 'profileCompleted',
           'position', 'workplace', 'branch', 'fcmToken'
         ]) &&
-        request.resource.data.role == 'citizen';
+        request.resource.data.role == 'citizen'; // role must be citizen on create
 
+      // A user can update their profile, but CANNOT change:
+      //   - their role (to prevent self-promotion to government)
+      //   - their email (set by Firebase Auth)
+      //   - their createdAt (immutable timestamp)
       allow update: if isOwner(userId) &&
-        request.resource.data.role == resource.data.role &&
-        request.resource.data.email == resource.data.email &&
-        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.role == resource.data.role &&        // role unchanged
+        request.resource.data.email == resource.data.email &&      // email unchanged
+        request.resource.data.createdAt == resource.data.createdAt && // timestamp unchanged
         request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'displayName', 'photoURL', 'photoUrl', 'firstName', 'lastName',
           'phone', 'profileCompleted', 'position', 'workplace', 'branch', 'fcmToken'
         ]);
 
+      // User accounts cannot be deleted from the client — only via admin tools
       allow delete: if false;
 
+      // Notifications subcollection: users/{uid}/notifications
+      // Citizens can read their own notifications, but only the server (Cloud Functions)
+      // can write them — this prevents users from faking notifications
       match /notifications/{notifId} {
-        allow read: if isOwner(userId);
-        allow write: if false;
+        allow read: if isOwner(userId);  // only the owner can read their notifications
+        allow write: if false;           // only Cloud Functions can create/update/delete
       }
     }
 
-    // ── Complaints collection ────────────────────────────────────────
+    // ── Complaints collection ─────────────────────────────────────────────────
+    // The main collection where all reported issues are stored.
     match /complaints/{complaintId} {
+      // Anyone can read complaints — the map is public-facing
       allow read: if true;
 
+      // Any signed-in user can create a complaint, but the fields are validated:
+      //   - authorId must match the logged-in user (they can't file on behalf of others)
+      //   - title and description have length limits
+      //   - category and status must be from the allowed lists
+      //   - upvoteCount and commentCount must start at 0 (no vote stuffing on create)
       allow create: if isSignedIn() &&
         request.resource.data.keys().hasOnly([
           'title', 'description', 'category', 'imageUrl', 'imageUrls',
@@ -103,24 +144,26 @@ service cloud.firestore {
           'authorName', 'locationName', 'latitude', 'longitude', 'createdAt',
           'isAnonymous'
         ]) &&
-        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.authorId == request.auth.uid &&      // must be their own
         isValidString(request.resource.data.title, 5, 120) &&
         isValidString(request.resource.data.description, 10, 1000) &&
         isValidCategory(request.resource.data.category) &&
         isValidStatus(request.resource.data.status) &&
-        request.resource.data.upvoteCount == 0 &&
-        request.resource.data.commentCount == 0 &&
+        request.resource.data.upvoteCount == 0 &&                  // starts at 0
+        request.resource.data.commentCount == 0 &&                 // starts at 0
         request.resource.data.authorName is string &&
         isValidOptionalString(request.resource.data.locationName, 120) &&
         isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude);
 
+      // Update rules — three different scenarios are allowed:
       allow update: if
+        // 1. Original author editing their own complaint content (not status or counts)
         (
           isSignedIn() &&
-          isSelfUnchanged(request.auth.uid) &&
-          request.resource.data.status == resource.data.status &&
-          request.resource.data.upvoteCount == resource.data.upvoteCount &&
-          request.resource.data.commentCount == resource.data.commentCount &&
+          isSelfUnchanged(request.auth.uid) &&           // authorId hasn't changed
+          request.resource.data.status == resource.data.status &&          // no status change
+          request.resource.data.upvoteCount == resource.data.upvoteCount && // no vote change
+          request.resource.data.commentCount == resource.data.commentCount && // no count change
           request.resource.data.diff(resource.data).changedKeys().hasOnly([
             'title', 'description', 'category', 'imageUrl', 'imageUrls',
             'authorName', 'locationName', 'latitude', 'longitude'
@@ -132,6 +175,7 @@ service cloud.firestore {
           isValidGeoPoint(request.resource.data.latitude, request.resource.data.longitude)
         )
         ||
+        // 2. Government official changing only the status field
         (
           isSignedIn() &&
           isGovernment() &&
@@ -139,11 +183,13 @@ service cloud.firestore {
           isValidStatus(request.resource.data.status)
         )
         ||
+        // 3. Any signed-in user updating just the status (used by Cloud Functions)
         (
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
           isValidStatus(request.resource.data.status)
         )
         ||
+        // 4. Any signed-in user updating just the commentCount (used when adding comments)
         (
           isSignedIn() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']) &&
@@ -151,16 +197,24 @@ service cloud.firestore {
           request.resource.data.commentCount >= 0
         );
 
+      // A complaint can be deleted by a government official or by the original author
       allow delete: if isGovernment() || isComplaintOwner(complaintId);
 
+      // Upvotes subcollection: complaints/{id}/upvotes/{uid}
+      // One document per user — we can check if they've already voted
       match /upvotes/{upvoteId} {
-        allow read: if isSignedIn();
-        allow write: if false;
+        allow read: if isSignedIn(); // any signed-in user can check vote status
+        allow write: if false;       // only Cloud Functions toggle upvotes (atomic transaction)
       }
 
+      // Comments subcollection: complaints/{id}/comments/{commentId}
       match /comments/{commentId} {
-        allow read: if true;
+        allow read: if true; // comments are visible to guests too
 
+        // Any signed-in user can comment, but:
+        //   - authorId must be their own UID
+        //   - text must be 1-1000 characters
+        //   - isOfficial must be a boolean value
         allow create: if isSignedIn() &&
           request.resource.data.keys().hasOnly([
             'authorId', 'authorName', 'text', 'parentCommentId', 'isOfficial', 'timestamp'
@@ -172,6 +226,10 @@ service cloud.firestore {
             request.resource.data.parentCommentId is string) &&
           request.resource.data.isOfficial is bool;
 
+        // Comments can be edited or deleted by:
+        //   - The comment author themselves
+        //   - Any government official (moderation)
+        //   - The complaint owner (managing their own post's comments)
         allow update, delete: if isSignedIn() && (
           resource.data.authorId == request.auth.uid ||
           isGovernment() ||
@@ -180,32 +238,41 @@ service cloud.firestore {
       }
     }
 
-    // ── Chats collection ─────────────────────────────────────────────
-    // Firestore queries with OR across different fields fail silently.
-    // We allow any signed-in user to read chats, since the query itself
-    // filters to the user's own sessions (officialId/citizenId match).
-    // Write rules still enforce participant-only access.
+    // ── Chats collection ──────────────────────────────────────────────────────
+    // One document per conversation between an official and a citizen.
+    // Note: Firestore doesn't support OR queries across different fields,
+    // so we allow any signed-in user to read chats (the query itself filters
+    // to only the sessions that belong to the current user).
+    // Write rules still ensure only participants can create/update.
     match /chats/{chatId} {
       allow read: if isSignedIn();
 
+      // A chat can only be created by one of the two participants
       allow create: if isSignedIn() && (
         request.resource.data.officialId == request.auth.uid ||
         request.resource.data.citizenId == request.auth.uid
       );
 
+      // A chat can only be updated by one of the two participants
+      // (e.g. to update lastMessage or the isRead flags)
       allow update: if isSignedIn() && (
         resource.data.officialId == request.auth.uid ||
         resource.data.citizenId == request.auth.uid
       );
 
+      // Chats are never deleted — even if resolved, the history is kept
       allow delete: if false;
 
+      // Messages subcollection: chats/{chatId}/messages/{messageId}
       match /messages/{messageId} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn(); // both participants can read all messages
 
+        // A message can only be created if senderId matches the logged-in user
+        // This prevents anyone from impersonating another user in a chat
         allow create: if isSignedIn() &&
           request.resource.data.senderId == request.auth.uid;
 
+        // Messages cannot be edited or deleted once sent
         allow update, delete: if false;
       }
     }
