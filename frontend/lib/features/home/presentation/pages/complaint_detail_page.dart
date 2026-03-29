@@ -957,6 +957,58 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>
                             ),
                             const SizedBox(height: 16),
 
+                            // Description section
+                            if (_complaint.description.isNotEmpty) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF1C2733)
+                                      : const Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.black.withValues(alpha: 0.06),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.description_outlined,
+                                          color: textColor.withValues(alpha: 0.7),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Description',
+                                          style: TextStyle(
+                                            color: textColor.withValues(alpha: 0.7),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      _complaint.description,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
                             // Location section (visible when coordinates exist)
                             _buildOfficialLocationSection(isDark, textColor),
 

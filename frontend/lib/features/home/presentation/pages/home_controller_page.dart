@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:spotit/features/dashboard/presentation/pages/my_reports_page.dart';
 import 'package:spotit/features/home/presentation/pages/home_feed_page.dart';
@@ -260,7 +261,13 @@ class _HomeControllerPageState extends State<HomeControllerPage>
             'About',
             'Learn more about SpotIT',
             textColor,
-            onTap: () {},
+            onTap: () async {
+              Navigator.pop(context);
+              final uri = Uri.parse('https://teamspotit.com.lk');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
           ),
           _buildDrawerItem(
             Icons.help_outline_rounded,
