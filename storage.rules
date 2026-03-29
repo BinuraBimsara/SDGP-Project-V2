@@ -1,12 +1,21 @@
 rules_version = '2';
 
+// Firebase Storage Security Rules — controls who can upload, read, and delete files.
+// Firebase Storage is where we keep complaint evidence photos and profile images.
+// These rules run before any file operation — if no rule matches, the request is denied.
+
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // ── Helper functions ──────────────────────────────────────────────────────
+
+    // True if the user is logged in via Firebase Auth
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // True if the logged-in user has a government or official role.
+    // We read the role from Firestore so it stays in sync with the app.
     function isGovernment() {
       return isSignedIn() &&
         firestore.get(
@@ -14,39 +23,52 @@ service firebase.storage {
         ).data.role in ['government', 'official'];
     }
 
+    // True if the file being uploaded is:
+    //   - smaller than 5 MB (to prevent large file abuse)
+    //   - an image file type (e.g. image/jpeg, image/png)
     function isImageUpload() {
-      return request.resource.size < 5 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+      return request.resource.size < 5 * 1024 * 1024 &&       // 5 MB max
+        request.resource.contentType.matches('image/.*');      // must be an image
     }
 
-    // ── Complaint evidence images ──────────────────────────────────────
-    // Path: complaints/{complaintId}/{fileName}
+    // ── Complaint evidence images ─────────────────────────────────────────────
+    // Stored at: complaints/{complaintId}/{fileName}
+    // These are the photos citizens attach when filing a complaint.
     match /complaints/{complaintId}/{fileName} {
-      // Signed-in users can read complaint evidence.
+      // Any signed-in user can view complaint evidence (e.g. officials reviewing)
       allow read: if isSignedIn();
 
-      // Uploader must be authenticated and size/content type constrained.
+      // Any signed-in user can upload evidence, but the file
+      // must be an image and under 5 MB
       allow create: if isSignedIn() && isImageUpload();
 
-      // No updates or deletes from clients (admin SDK only)
+      // Evidence cannot be replaced or removed from the client — only
+      // server-side admin tools can do that, to preserve evidence integrity
       allow update, delete: if false;
     }
 
-    // ── Profile images ─────────────────────────────────────────────────
-    // Path: profile_images/{uid}.jpg (or equivalent)
+    // ── User profile images ───────────────────────────────────────────────────
+    // Stored at: profile_images/{fileName}
+    // The file name is the user's UID (e.g. "abc123.jpg") so we can enforce
+    // that each user can only manage their own profile picture.
     match /profile_images/{fileName} {
-      // Allow profile owner to read their image; government can read all.
+      // Any signed-in user can view profile pictures
       allow read: if isSignedIn();
 
-      // Owner can upload/update only their own profile image.
+      // A user can upload or replace their own profile image.
+      // fileName.matches(uid + '.*') ensures the filename starts with their UID,
+      // preventing them from overwriting another user's profile photo.
       allow create, update: if isSignedIn() &&
-        fileName.matches(request.auth.uid + '.*') &&
-        isImageUpload();
+        fileName.matches(request.auth.uid + '.*') && // only their own UID prefix
+        isImageUpload();                               // must be a valid image
 
+      // A user can delete their own profile image only
       allow delete: if isSignedIn() && fileName.matches(request.auth.uid + '.*');
     }
 
-    // ── Default: deny everything else ──────────────────────────────────
+    // ── Default deny rule ─────────────────────────────────────────────────────
+    // Any path not matched by the rules above is blocked completely.
+    // This is a safety net — nothing unexpected can be uploaded.
     match /{allPaths=**} {
       allow read, write: if false;
     }
